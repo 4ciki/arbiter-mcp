@@ -1,0 +1,58 @@
+# ── Secrets & credentials ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.json
+!benchmark_results.json
+# (service-account key files are *.json; keep this broad)
+# If you need to commit non-secret JSON, add an explicit !exception below, e.g.:
+# !some_safe_schema.json
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+pip-wheel-metadata/
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── Testing & coverage ────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+*.coveragerc
+
+# ── Persistent data (never commit runtime data) ───────────────────────────────
+chroma_data/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# ── Scratch & temporary scripts ───────────────────────────────────────────────
+scratch/
+
+# ── OS & editor artifacts ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.iml
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.log
+*.tmp
