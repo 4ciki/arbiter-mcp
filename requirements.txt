@@ -1,10 +1,10 @@
 # ── Web framework ──────────────────────────────────────────────────────────────
 fastapi==0.115.0
-uvicorn[standard]==0.30.6
+uvicorn[standard]>=0.31.1  # >=0.31.1 required by mcp==2.2.0
 httpx==0.27.2          # FastAPI test client + async HTTP
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-pydantic==2.8.2
+pydantic>=2.12.0       # >=2.12.0 required by mcp==2.2.0
 pydantic-settings==2.4.0
 python-dotenv==1.0.1
 
@@ -13,15 +13,16 @@ sqlalchemy==2.0.35
 aiosqlite==0.20.0
 
 # ── LangGraph / LangChain ──────────────────────────────────────────────────────
-langgraph==0.2.28
-langchain-core==0.3.6
+langgraph>=1.0.0                   # 1.x required by langgraph-checkpoint-sqlite>=2.0
+langgraph-checkpoint-sqlite>=2.0.0 # imported in agent/graph.py; was missing from requirements
+langchain-core>=1.4.7              # langgraph 1.x requires langchain-core>=1.3.0 (not 0.3.x)
 
 # ── LLM backends ──────────────────────────────────────────────────────────────
 google-cloud-aiplatform==1.67.1
 groq==0.11.0
 
 # ── Retrieval ──────────────────────────────────────────────────────────────────
-chromadb==0.5.11
+chromadb>=0.6.0            # 0.5.x has no pre-built chroma-hnswlib wheel for cp312/win_amd64
 
 # ── Adapters ──────────────────────────────────────────────────────────────────
 slack_sdk==3.31.0
