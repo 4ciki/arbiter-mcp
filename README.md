@@ -1,6 +1,16 @@
-# Arbiter 🛡️
+<p align="center">
+  <img src="arbiter-mcp-ai-agent-icon-transparent.png" alt="Arbiter Icon" width="96" />
+</p>
 
-> **Autonomous IT helpdesk triage and safety-critical resolution engine.**
+<h1 align="center">Arbiter 🛡️</h1>
+
+<p align="center">
+  <strong>Autonomous IT helpdesk triage and safety-critical resolution engine.</strong>
+</p>
+
+<p align="center">
+  <img src="arbiter-ai-agent-it-ticket-triage-product-hunt-cover.png" alt="Arbiter — AI Agent for IT Ticket Triage" width="100%" />
+</p>
 
 Arbiter is an open-source, provider-agnostic IT ticket resolution agent built with LangGraph, FastAPI, ChromaDB, and Streamlit. It demonstrates an enterprise-grade agentic architecture that combines semantic retrieval, historical category success rates, and multi-tier LLM reasoning to safely automate IT support tickets while strictly routing high-risk and low-confidence cases to humans.
 
