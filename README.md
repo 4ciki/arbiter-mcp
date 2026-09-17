@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="arbiter-mcp-ai-agent-icon-transparent.png" alt="Arbiter Icon" width="96" />
+  <img src="arbiter-mcp-ai-agent-icon-transparent.png" alt="Arbiter MCP Logo" width="200" />
 </p>
 
 <h1 align="center">Arbiter</h1>
