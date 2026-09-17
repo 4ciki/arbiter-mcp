@@ -2,10 +2,21 @@
   <img src="arbiter-mcp-ai-agent-icon-transparent.png" alt="Arbiter Icon" width="96" />
 </p>
 
-<h1 align="center">Arbiter 🛡️</h1>
+<h1 align="center">Arbiter</h1>
 
 <p align="center">
   <strong>Autonomous IT helpdesk triage and safety-critical resolution engine.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/LangGraph-1.x-1C3C3C?logo=langchain&logoColor=white" alt="LangGraph" />
+  <img src="https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Streamlit-1.38-FF4B4B?logo=streamlit&logoColor=white" alt="Streamlit" />
+  <img src="https://img.shields.io/badge/ChromaDB-1.x-F97316?logoColor=white" alt="ChromaDB" />
+  <img src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/License-Apache%202.0-blue?logo=apache&logoColor=white" alt="License" />
+  <img src="https://img.shields.io/badge/Tests-51%20passed-22C55E?logo=pytest&logoColor=white" alt="Tests" />
 </p>
 
 <p align="center">
@@ -19,7 +30,7 @@ Arbiter is an open-source, provider-agnostic IT ticket resolution agent built wi
 
 ---
 
-## 🏛️ Architecture
+## Architecture
 
 Arbiter decouples reasoning from infrastructure:
 - **Ticketing Source**: Integrates with Jira via Atlassian's remote Rovo MCP protocol (`/v1/mcp`).
@@ -32,7 +43,7 @@ Arbiter decouples reasoning from infrastructure:
 
 ---
 
-## 🎯 How the Trust Score Works
+## How the Trust Score Works
 
 At the core of Arbiter is a deterministic, safety-critical trust calculation implemented in pure functions ([`scoring/trust_scorer.py`](scoring/trust_scorer.py)).
 
@@ -46,7 +57,7 @@ $$\text{TrustScore} = w_{\text{retrieval}} \cdot S_{\text{retrieval}} + w_{\text
 | **Category Success Component** ($S_{\text{category}}$) | `0.35` | Historical human agreement rate (`human_agreed_count / total_handled`). **Cold-Start Guard**: If `total_handled < 20`, defaults strictly to `0.30` so unproven categories cannot auto-resolve. |
 | **LLM Confidence Component** ($S_{\text{llm}}$) | `0.25` | Self-reported model confidence ($0.0 - 1.0$) from the classification prompt. |
 
-### 🚨 Safety-Critical Risk Override
+### Safety-Critical Risk Override
 
 Arbiter enforces an absolute safety guarantee: **no ticket bearing high-risk keywords may ever be auto-resolved**, regardless of its numerical trust score.
 
@@ -58,7 +69,7 @@ If the classification detects any risk flags (`production`, `security`, `billing
 
 ---
 
-## ⚡ Quickstart & Local Setup
+## Quickstart & Local Setup
 
 ### 1. Prerequisites
 - Python 3.11 or 3.12
@@ -94,9 +105,9 @@ Populate `.env` with your API credentials (see [.env.example](.env.example) for 
 
 ---
 
-## 🐳 Running with Docker
+## Running with Docker
 
-Run the entire system (FastAPI backend + Streamlit dashboard + persistent storage) with a single command:
+<img src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white" height="20" /> Run the entire system (FastAPI backend + Streamlit dashboard + persistent storage) with a single command:
 
 ```bash
 docker-compose up --build
@@ -119,9 +130,9 @@ streamlit run dashboard/app.py --server.port 8501
 
 ---
 
-## 🧪 Running the Test Suite
+## Running the Test Suite
 
-Arbiter maintains a test suite covering pure scoring math, ORM persistence, vector retrieval isolation, LangGraph state checkpoints, and webhook signature security:
+<img src="https://img.shields.io/badge/pytest-51%20passed-22C55E?logo=pytest&logoColor=white" height="20" /> Arbiter maintains a test suite covering pure scoring math, ORM persistence, vector retrieval isolation, LangGraph state checkpoints, and webhook signature security:
 
 ```bash
 python -m pytest tests/ -v
@@ -131,7 +142,7 @@ All 51 tests run locally without requiring external credentials or network acces
 
 ---
 
-## 📊 Performance & Metrics
+## Performance & Metrics
 
 The following metrics were empirically measured using Arbiter's benchmark runner ([`run_benchmark.py`](run_benchmark.py)) against the fixed evaluation dataset ([`benchmark_ground_truth.csv`](benchmark_ground_truth.csv), $N = 40$) through the live pipeline (Groq `openai/gpt-oss-20b` for classification, ChromaDB `all-MiniLM-L6-v2` semantic retrieval, deterministic trust scoring, and SQLite persistence):
 
@@ -143,7 +154,7 @@ The following metrics were empirically measured using Arbiter's benchmark runner
 | **Mean Time to Triage (MTTT)** | **1.19s** (Median: 1.03s) | End-to-end latency from ingestion through classification, vector retrieval, trust scoring, and decision routing on Groq LPUs. |
 | **False-Positive Auto-Resolutions** | **0 / 40** (0.0%) | **Absolute safety invariant preserved**. Zero risk-bearing or unverified tickets auto-resolved. |
 
-### 🔬 Risk Calibration, Named Limitations & Trap Analysis
+### Risk Calibration, Named Limitations & Trap Analysis
 - **Named Limitation — Catch-All Category (`other`, 0/5 success rate)**: All 5 tickets designed for the `other` category (`T36`–`T40`) were misclassified into more specific functional categories (`software` for Outlook/Teams/expense apps, `hardware` for desk monitor arms, `access` for 2FA policy). The model exhibits a 0% success rate on the catch-all label when any concrete domain keyword is present. The remaining 4 mismatches (`T04`, `T05`, `T11`, `T33`) were dual-domain boundary cases (e.g., VPN client password, ethernet port vs. network).
 - **Risk Traps Cleared (6 / 6, 100%)**: Explicit negative prompt boundaries in `CLASSIFY_PROMPT` successfully stopped all 6 trap tickets (`T03`, `T09`, `T13`, `T20`, `T25`, `T32`) from triggering false risk overrides. In particular, routine tickets `T03` (account lockout) and `T09` (VPN handshake error) were no longer blocked by false risk flags and achieved scores above 0.75, allowing them to safely auto-resolve.
 - **Genuine Risks Caught (8 / 8, 100%)**: All 8 genuine risk tickets (`T04`, `T08`, `T14`, `T17`, `T21`, `T26`, `T31`, `T35` covering account takeover, production pipeline failures, billing anomalies, physical battery hazards, and data loss) triggered `risk_override = True` and were escalated to humans.
@@ -152,6 +163,6 @@ The following metrics were empirically measured using Arbiter's benchmark runner
 
 ---
 
-## 📄 License
+## License
 
 Licensed under the [Apache License 2.0](LICENSE). Copyright © 2026 4ciki.
