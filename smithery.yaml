@@ -1,0 +1,60 @@
+# Smithery configuration for Arbiter MCP
+# https://smithery.ai/docs/build/publish
+#
+# Arbiter MCP exposes IT helpdesk triage capabilities as MCP tools:
+#   - triage_ticket: classify, score and route a support ticket
+#   - get_ticket: retrieve a ticket's current status and trust score
+#   - list_recent_tickets: list recent tickets from the audit log
+#   - get_metrics: return benchmark and operational metrics
+#
+# Users supply their own Jira, Slack, Groq, and Google credentials
+# via the configSchema below. No credentials are stored by Smithery.
+
+startCommand:
+  type: stdio
+  commandFunction: |-
+    (config) => ({
+      command: "python",
+      args: ["-m", "mcp_server"],
+      env: {
+        JIRA_SITE_URL:                  config.jiraSiteUrl        || "",
+        JIRA_EMAIL:                     config.jiraEmail          || "",
+        JIRA_API_TOKEN:                 config.jiraApiToken       || "",
+        SLACK_BOT_TOKEN:                config.slackBotToken      || "",
+        SLACK_SIGNING_SECRET:           config.slackSigningSecret || "",
+        GROQ_API_KEY:                   config.groqApiKey         || "",
+        GCP_PROJECT_ID:                 config.gcpProjectId       || "",
+        GOOGLE_APPLICATION_CREDENTIALS: config.googleCredentials  || "",
+        DATABASE_URL:                   "sqlite+aiosqlite:///./arbiter.db",
+        LOG_LEVEL:                      "INFO"
+      }
+    })
+
+configSchema:
+  type: object
+  required: []
+  properties:
+    jiraSiteUrl:
+      type: string
+      description: "Your Jira Cloud site URL (e.g. https://yourorg.atlassian.net). Leave empty to run in offline/test mode."
+    jiraEmail:
+      type: string
+      description: "Jira account email address for API authentication."
+    jiraApiToken:
+      type: string
+      description: "Jira API token (from id.atlassian.com/manage-profile/security/api-tokens)."
+    slackBotToken:
+      type: string
+      description: "Slack bot token (xoxb-...) for posting escalation cards."
+    slackSigningSecret:
+      type: string
+      description: "Slack app signing secret for HMAC-SHA256 webhook verification."
+    groqApiKey:
+      type: string
+      description: "Groq API key for fast LLM classification. Free tier sufficient."
+    gcpProjectId:
+      type: string
+      description: "Google Cloud project ID for Vertex AI (gemini-3.8-flash) escalation summaries. Optional."
+    googleCredentials:
+      type: string
+      description: "Path to Google service account JSON credentials file. Optional."
