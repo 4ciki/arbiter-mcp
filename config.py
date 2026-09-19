@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     # ── Storage ────────────────────────────────────────────────────────────────
     CHROMA_PATH: str = "./chroma_data"
-    DATABASE_URL: str = "sqlite+aiosqlite:///./arbiter.db"
+    DATABASE_URL: str = "sqlite:///./arbiter.db"
 
     # ── Trust scoring thresholds ───────────────────────────────────────────────
     TRUST_THRESHOLD: float = 0.75

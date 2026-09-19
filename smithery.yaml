@@ -21,7 +21,7 @@ startCommand:
         SLACK_SIGNING_SECRET: config.slackSigningSecret || "",
         GROQ_API_KEY:         config.groqApiKey         || "",
         GCP_PROJECT_ID:       config.gcpProjectId       || "",
-        DATABASE_URL:         "sqlite+aiosqlite:///./arbiter.db",
+        DATABASE_URL:         "sqlite:///./arbiter.db",
         LOG_LEVEL:            "INFO"
       }
     })
