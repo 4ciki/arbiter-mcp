@@ -7,7 +7,7 @@
 <p align="center">
   <strong>Autonomous IT helpdesk triage and safety-critical resolution engine.</strong>
 </p>
-<a href="https://www.producthunt.com/products/arbiter-mcp?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-arbiter-mcp" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1253657&theme=dark" alt="arbiter-mcp - AI agent that triages IT tickets, not just routes them | Product Hunt" width="250" height="54" /></a>
+<a align="center" href="https://www.producthunt.com/products/arbiter-mcp?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-arbiter-mcp" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1253657&theme=dark" alt="arbiter-mcp - AI agent that triages IT tickets, not just routes them | Product Hunt" width="250" height="54" /></a>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white" alt="Python" />
