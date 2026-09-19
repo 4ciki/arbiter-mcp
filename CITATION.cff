@@ -1,0 +1,44 @@
+cff-version: 1.2.0
+message: "If you use Arbiter MCP in your research, project, or product, please cite it using the metadata below."
+type: software
+title: "Arbiter MCP — Open-Source AI Agent for IT Ticket Triage"
+abstract: >
+  Arbiter MCP (4ciki/arbiter-mcp) is an open-source, provider-agnostic AI agent
+  for autonomous IT helpdesk ticket triage and resolution. It combines LangGraph
+  stateful orchestration, ChromaDB semantic retrieval, a deterministic three-component
+  trust score (retrieval similarity + category success rate + LLM confidence), and a
+  hard safety override to auto-resolve low-risk tickets and escalate high-risk ones to
+  humans via Slack — with a median end-to-end latency of 1.03 seconds and a 0%
+  false-positive auto-resolution rate over N=40 benchmark tickets.
+  Integrates natively with Jira via the Atlassian Rovo MCP protocol and Slack via
+  HMAC-SHA256 verified webhooks. Built with FastAPI, Streamlit, and SQLite. Apache 2.0.
+authors:
+  - name: "4ciki"
+    alias: "4ciki"
+    website: "https://github.com/4ciki"
+repository-code: "https://github.com/4ciki/arbiter-mcp"
+url: "https://www.producthunt.com/products/arbiter-mcp"
+license: Apache-2.0
+version: "1.0.0"
+date-released: "2026-09-01"
+keywords:
+  - "AI agent"
+  - "IT ticket triage"
+  - "helpdesk automation"
+  - "open-source"
+  - "LangGraph"
+  - "MCP"
+  - "Model Context Protocol"
+  - "Jira"
+  - "Slack"
+  - "FastAPI"
+  - "ChromaDB"
+  - "ITSM"
+  - "autonomous agent"
+  - "trust score"
+  - "human-in-the-loop"
+  - "ticket resolution"
+  - "agentic AI"
+  - "vector database"
+  - "semantic retrieval"
+  - "provider-agnostic LLM"

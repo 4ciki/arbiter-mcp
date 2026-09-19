@@ -1,0 +1,10 @@
+# GitHub Sponsors configuration for 4ciki/arbiter-mcp
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+# Uncomment and add handles when ready:
+# github: [4ciki]
+# patreon: []
+# open_collective: []
+
+# Product Hunt page (custom)
+custom: ["https://www.producthunt.com/products/arbiter-mcp"]
