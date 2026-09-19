@@ -1,0 +1,46 @@
+# Render.com deployment configuration for Arbiter MCP
+# Deploy at: https://dashboard.render.com/new/web-service
+# Connect your GitHub repo (4ciki/arbiter-mcp) and Render auto-detects this file.
+#
+# After deploy, your Smithery MCP Server URL will be:
+#   https://arbiter-mcp.onrender.com/mcp
+#
+# Free tier note: Render free web services spin down after 15min inactivity.
+# Upgrade to Starter ($7/mo) for always-on. For Smithery testing, free is fine.
+
+services:
+  - type: web
+    name: arbiter-mcp
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+
+    # Health check — Render uses this to confirm the service is live
+    healthCheckPath: /health
+
+    # All credentials are optional — server runs in offline/demo mode without them.
+    # Add real values in Render Dashboard → Environment for production use.
+    envVars:
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./arbiter.db
+      - key: PORT
+        value: "8000"
+
+      # ── Optional: add these in Render Dashboard for full functionality ──
+      # - key: JIRA_SITE_URL
+      #   value: https://yourorg.atlassian.net
+      # - key: JIRA_EMAIL
+      #   value: you@yourorg.com
+      # - key: JIRA_API_TOKEN
+      #   sync: false   # set as secret in Render dashboard
+      # - key: SLACK_BOT_TOKEN
+      #   sync: false
+      # - key: SLACK_SIGNING_SECRET
+      #   sync: false
+      # - key: GROQ_API_KEY
+      #   sync: false
+      # - key: GCP_PROJECT_ID
+      #   value: your-gcp-project
