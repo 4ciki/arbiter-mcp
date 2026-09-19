@@ -1,11 +1,13 @@
 # Smithery configuration for Arbiter MCP
 # https://smithery.ai/docs/build/publish
-#
-# Arbiter MCP is an open-source stdio MCP server.
-# Users run it locally via Docker or Python.
-#
-# Static server card (bypasses live scanning):
-#   https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/.well-known/mcp/server-card.json
+
+name: "Arbiter MCP"
+displayName: "Arbiter MCP"
+description: "AI-powered Slack to Jira ticket triage agent. Classifies IT ticket severity (P0-P3), auto-resolves safe tickets, and escalates critical incidents to humans via Slack. Zero false-positive auto-resolutions. Built with LangGraph, MCP, FastAPI, and ChromaDB."
+homepage: "https://github.com/4ciki/arbiter-mcp"
+repository: "https://github.com/4ciki/arbiter-mcp"
+icon: "https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/arbiter-mcp-ai-agent-icon.png"
+iconUrl: "https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/arbiter-mcp-ai-agent-icon.png"
 
 startCommand:
   type: stdio

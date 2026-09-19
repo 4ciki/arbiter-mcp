@@ -257,12 +257,35 @@ def create_app(
         """Service info and discovery endpoint."""
         return {
             "status": "running",
+            "name": "Arbiter MCP",
+            "displayName": "Arbiter MCP",
             "service": "Arbiter MCP",
+            "description": (
+                "AI-powered Slack to Jira ticket triage agent. "
+                "Classifies IT ticket severity (P0-P3), auto-resolves safe tickets, "
+                "and escalates critical incidents to humans via Slack. "
+                "Zero false-positive auto-resolutions. Built with LangGraph, MCP, FastAPI, and ChromaDB."
+            ),
             "version": "1.0.0",
+            "homepage": "https://github.com/4ciki/arbiter-mcp",
+            "repository": "https://github.com/4ciki/arbiter-mcp",
+            "icon": "https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/arbiter-mcp-ai-agent-icon.png",
+            "iconUrl": "https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/arbiter-mcp-ai-agent-icon.png",
             "mcp_endpoint": "/mcp",
             "server_card": "/.well-known/mcp/server-card.json",
             "health": "/health",
         }
+
+    @app.get("/icon.png")
+    @app.get("/favicon.ico")
+    async def get_icon():
+        from pathlib import Path
+        from fastapi.responses import FileResponse
+        for name in ("arbiter-mcp-ai-agent-icon.png", "arbiter-mcp-ai-agent-icon-transparent.png"):
+            p = Path(__file__).resolve().parent.parent / name
+            if p.is_file():
+                return FileResponse(str(p), media_type="image/png")
+        raise HTTPException(status_code=404, detail="Icon not found")
 
     # ── MCP HTTP endpoint (for Smithery / Arcade.dev / Claude / Cursor) ────────
     @app.post("/", status_code=status.HTTP_200_OK)
@@ -296,15 +319,36 @@ def create_app(
                 "result": {
                     "protocolVersion": "2024-11-05",
                     "serverInfo": {
-                        "name": "arbiter-mcp",
+                        "name": "Arbiter MCP",
+                        "displayName": "Arbiter MCP",
+                        "title": "Arbiter MCP",
                         "version": "1.0.0",
                         "description": (
-                            "AI-powered Slack → Jira ticket triage agent. "
-                            "Classifies severity (P0-P3), auto-resolves safe tickets, "
-                            "escalates critical incidents. Zero false positives."
+                            "AI-powered Slack to Jira ticket triage agent. "
+                            "Classifies IT ticket severity (P0-P3), auto-resolves safe tickets, "
+                            "and escalates critical incidents to humans via Slack with zero false positives. "
+                            "Built with LangGraph, MCP, FastAPI, and ChromaDB."
                         ),
+                        "homepage": "https://github.com/4ciki/arbiter-mcp",
+                        "homepageUrl": "https://github.com/4ciki/arbiter-mcp",
+                        "websiteUrl": "https://github.com/4ciki/arbiter-mcp",
+                        "repository": "https://github.com/4ciki/arbiter-mcp",
+                        "icon": "https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/arbiter-mcp-ai-agent-icon.png",
+                        "iconUrl": "https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/arbiter-mcp-ai-agent-icon.png",
                     },
-                    "capabilities": {"tools": {}},
+                    "description": (
+                        "AI-powered Slack to Jira ticket triage agent. "
+                        "Classifies IT ticket severity (P0-P3), auto-resolves safe tickets, "
+                        "and escalates critical incidents to humans via Slack with zero false positives."
+                    ),
+                    "homepage": "https://github.com/4ciki/arbiter-mcp",
+                    "icon": "https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/arbiter-mcp-ai-agent-icon.png",
+                    "iconUrl": "https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/arbiter-mcp-ai-agent-icon.png",
+                    "instructions": (
+                        "Arbiter MCP classifies IT ticket severity, resolves safe tickets, "
+                        "and escalates critical incidents to Slack."
+                    ),
+                    "capabilities": {"tools": {"listChanged": False}},
                 },
             }
 
@@ -326,38 +370,109 @@ def create_app(
                                 "Returns: category, severity, trust_score, risk_override, decision "
                                 "(auto_resolve or escalate), and recommended Jira priority."
                             ),
+                            "annotations": {
+                                "readOnlyHint": True,
+                                "destructiveHint": False,
+                                "idempotentHint": False,
+                                "openWorldHint": True,
+                            },
                             "inputSchema": {
                                 "type": "object",
                                 "required": ["ticket_id", "ticket_text"],
                                 "properties": {
+                                    "ticket_id": {"type": "string", "description": "Unique ticket identifier (e.g. IT-1024)"},
+                                    "ticket_text": {"type": "string", "description": "Full text of the IT support ticket or Slack message to triage"},
+                                    "created_at": {"type": "string", "description": "ISO 8601 creation timestamp (optional, defaults to now)"},
+                                },
+                            },
+                            "outputSchema": {
+                                "type": "object",
+                                "required": ["ticket_id", "severity", "trust_score", "decision"],
+                                "properties": {
                                     "ticket_id": {"type": "string", "description": "Unique ticket identifier"},
-                                    "ticket_text": {"type": "string", "description": "Full ticket or Slack message text"},
-                                    "created_at": {"type": "string", "description": "ISO 8601 timestamp (optional)"},
+                                    "mode": {"type": "string", "description": "Execution mode (live or offline_demo)"},
+                                    "category": {"type": "string", "description": "Predicted ticket category"},
+                                    "severity": {
+                                        "type": "string",
+                                        "enum": ["P0_CRITICAL", "P1_HIGH", "P2_MEDIUM", "P3_LOW"],
+                                        "description": "Assigned ticket severity",
+                                    },
+                                    "trust_score": {"type": "number", "description": "Deterministic trust score between 0.0 and 1.0"},
+                                    "risk_override": {"type": "boolean", "description": "Whether safety override was triggered"},
+                                    "risk_flags": {"type": "array", "items": {"type": "string"}, "description": "Identified safety risk flags"},
+                                    "decision": {"type": "string", "enum": ["auto_resolve", "escalate"], "description": "Final routing decision"},
+                                    "recommended_priority": {"type": "string", "description": "Recommended Jira priority"},
+                                    "note": {"type": "string", "description": "Reasoning context and explanation"},
                                 },
                             },
                         },
                         {
                             "name": "get_ticket",
-                            "description": "Retrieve the status, trust score, and audit record for a triaged ticket.",
+                            "description": "Retrieve the status, trust score, risk flags, and full audit record for a previously triaged ticket.",
+                            "annotations": {
+                                "readOnlyHint": True,
+                                "destructiveHint": False,
+                                "idempotentHint": True,
+                                "openWorldHint": False,
+                            },
                             "inputSchema": {
                                 "type": "object",
                                 "required": ["ticket_id"],
                                 "properties": {
-                                    "ticket_id": {"type": "string"},
+                                    "ticket_id": {"type": "string", "description": "Ticket ID to look up (e.g. IT-1024)"},
+                                },
+                            },
+                            "outputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "ticket_id": {"type": "string", "description": "Ticket ID"},
+                                    "source": {"type": "string", "description": "Ticket source (jira, slack, or mcp)"},
+                                    "created_at": {"type": "string", "description": "Creation timestamp"},
+                                    "decision": {"type": "string", "description": "Routing decision"},
+                                    "trust_score": {"type": "number", "description": "Recorded trust score"},
+                                    "risk_override": {"type": "boolean", "description": "Safety override status"},
+                                    "risk_flags": {"type": "array", "items": {"type": "string"}, "description": "Risk flags detected"},
+                                    "error": {"type": "string", "description": "Error details if ticket not found"},
                                 },
                             },
                         },
                         {
                             "name": "list_tickets",
-                            "description": "List recent IT support tickets from the audit log with filtering by decision outcome.",
+                            "description": "List recent IT support tickets from the Arbiter MCP audit log, optionally filtered by decision outcome (auto_resolve or escalate).",
+                            "annotations": {
+                                "readOnlyHint": True,
+                                "destructiveHint": False,
+                                "idempotentHint": True,
+                                "openWorldHint": False,
+                            },
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {
-                                    "limit": {"type": "integer", "default": 10},
+                                    "limit": {"type": "integer", "description": "Maximum number of tickets to return (default 10, max 50)", "default": 10},
                                     "decision_filter": {
                                         "type": "string",
                                         "enum": ["auto_resolve", "escalate", "all"],
+                                        "description": "Filter by decision outcome",
                                         "default": "all",
+                                    },
+                                },
+                            },
+                            "outputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "count": {"type": "integer", "description": "Count of tickets returned"},
+                                    "tickets": {
+                                        "type": "array",
+                                        "description": "List of tickets",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "id": {"type": "string"},
+                                            "decision": {"type": "string"},
+                                            "trust_score": {"type": "number"},
+                                            "created_at": {"type": "string"},
+                                          },
+                                        },
                                     },
                                 },
                             },
@@ -366,10 +481,35 @@ def create_app(
                             "name": "get_metrics",
                             "description": (
                                 "Return Arbiter MCP benchmark metrics: 77.5% classification accuracy, "
-                                "20% auto-resolution rate, 0% false positives on N=40 tickets, "
-                                "1.03s median triage latency."
+                                "20% auto-resolution rate, 0% false-positive auto-resolutions, "
+                                "1.03s median triage latency on N=40 ticket benchmark."
                             ),
+                            "annotations": {
+                                "readOnlyHint": True,
+                                "destructiveHint": False,
+                                "idempotentHint": True,
+                                "openWorldHint": False,
+                            },
                             "inputSchema": {"type": "object", "properties": {}},
+                            "outputSchema": {
+                                "type": "object",
+                                "required": [
+                                    "classification_accuracy",
+                                    "auto_resolution_rate",
+                                    "false_positive_auto_resolutions",
+                                    "genuine_risk_tickets_caught",
+                                    "mean_time_to_triage_seconds",
+                                    "median_time_to_triage_seconds",
+                                ],
+                                "properties": {
+                                    "classification_accuracy": {"type": "string", "description": "Classification accuracy (31/40)"},
+                                    "auto_resolution_rate": {"type": "string", "description": "Safe auto-resolution percentage"},
+                                    "false_positive_auto_resolutions": {"type": "string", "description": "False positive rate (target: 0.0%)"},
+                                    "genuine_risk_tickets_caught": {"type": "string", "description": "Critical risk tickets caught (target: 100%)"},
+                                    "mean_time_to_triage_seconds": {"type": "number", "description": "Mean triage latency in seconds"},
+                                    "median_time_to_triage_seconds": {"type": "number", "description": "Median triage latency in seconds"},
+                                },
+                            },
                         },
                     ]
                 },
