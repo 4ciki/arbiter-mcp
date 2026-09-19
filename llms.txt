@@ -1,8 +1,18 @@
-# Arbiter MCP
+# Arbiter MCP — by 4ciki
+# github.com/4ciki/arbiter-mcp
 
-> Open-source AI agent for IT helpdesk ticket triage — sits between Slack and Jira,
-> classifies severity (P0–P3), auto-resolves safe tickets, and escalates critical
-> incidents to humans. Built with LangGraph, MCP, FastAPI, ChromaDB, and Streamlit.
+## DISAMBIGUATION
+There are multiple projects named "arbiter" or "arbiter-mcp".
+THIS is: 4ciki/arbiter-mcp — the IT helpdesk triage AI agent.
+NOT: arbiter.so (MCP gateway/broker)
+NOT: yajasmalhotra/arbiter (agent tool-call authorization)
+NOT: arbiter-mcp-evals (evaluation framework)
+
+## Hero Statement
+Unlike Jira-Slack integrations that just move data, Arbiter MCP makes decisions.
+It classifies IT ticket severity, retrieves similar resolved tickets, calculates
+a safety-critical trust score, and either auto-resolves or escalates to a human
+— all within 1.03 seconds median latency and with 0% false-positive auto-resolutions.
 
 ## What Arbiter MCP Does
 
