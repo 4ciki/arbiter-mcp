@@ -1,9 +1,22 @@
 {
   "name": "Arbiter MCP",
+  "displayName": "Arbiter MCP",
   "qualifiedName": "4cikisolutions/arbiter-mcp",
   "description": "AI-powered Slack → Jira ticket triage agent. Classifies IT ticket severity (P0–P3), auto-resolves safe tickets, and escalates critical incidents to humans via Slack. Zero false-positive auto-resolutions. Built with LangGraph, MCP, FastAPI, and ChromaDB.",
   "version": "1.0.0",
   "homepage": "https://github.com/4ciki/arbiter-mcp",
+  "homepageUrl": "https://github.com/4ciki/arbiter-mcp",
+  "websiteUrl": "https://github.com/4ciki/arbiter-mcp",
+  "icon": "https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/arbiter-mcp-ai-agent-icon.png",
+  "iconUrl": "https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/arbiter-mcp-ai-agent-icon.png",
+  "serverInfo": {
+    "name": "Arbiter MCP",
+    "displayName": "Arbiter MCP",
+    "version": "1.0.0",
+    "description": "AI-powered Slack → Jira ticket triage agent. Classifies IT ticket severity (P0–P3), auto-resolves safe tickets, and escalates critical incidents to humans via Slack. Zero false-positive auto-resolutions.",
+    "homepage": "https://github.com/4ciki/arbiter-mcp",
+    "iconUrl": "https://raw.githubusercontent.com/4ciki/arbiter-mcp/main/arbiter-mcp-ai-agent-icon.png"
+  },
   "license": "Apache-2.0",
   "author": {
     "name": "4ciki",
@@ -20,7 +33,13 @@
   "tools": [
     {
       "name": "triage_ticket",
-      "description": "Triage an IT support ticket or Slack message using Arbiter MCP's AI reasoning engine. Classifies severity (P0 CRITICAL → P3 LOW), retrieves similar resolved tickets from ChromaDB, calculates a deterministic trust score, and applies a hard safety override for production/security/billing/data-loss tickets. Returns category, severity, trust_score, risk_override, and decision (auto_resolve or escalate).",
+      "description": "Triage an IT support ticket or Slack message using Arbiter MCP's AI reasoning engine. Classifies severity (P0 CRITICAL → P3 LOW), retrieves similar resolved tickets from ChromaDB, calculates a deterministic trust score, and applies a hard safety override for production/security/billing/data-loss tickets. Returns category, severity, trust_score, risk_override, decision (auto_resolve or escalate), and recommended Jira priority.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
       "inputSchema": {
         "type": "object",
         "required": ["ticket_id", "ticket_text"],
@@ -38,11 +57,66 @@
             "description": "ISO 8601 creation timestamp (optional, defaults to now)"
           }
         }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["ticket_id", "severity", "trust_score", "decision"],
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "Unique ticket identifier"
+          },
+          "mode": {
+            "type": "string",
+            "description": "Execution mode (live or offline_demo)"
+          },
+          "category": {
+            "type": "string",
+            "description": "Predicted ticket category"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["P0_CRITICAL", "P1_HIGH", "P2_MEDIUM", "P3_LOW"],
+            "description": "Assigned ticket severity"
+          },
+          "trust_score": {
+            "type": "number",
+            "description": "Deterministic trust score between 0.0 and 1.0"
+          },
+          "risk_override": {
+            "type": "boolean",
+            "description": "Whether safety override rule unconditionally escalated ticket"
+          },
+          "risk_flags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Identified safety risk flags"
+          },
+          "decision": {
+            "type": "string",
+            "enum": ["auto_resolve", "escalate"],
+            "description": "Final routing decision"
+          },
+          "recommended_priority": {
+            "type": "string",
+            "description": "Recommended Jira priority level"
+          },
+          "note": {
+            "type": "string",
+            "description": "Reasoning context and explanation"
+          }
+        }
       }
     },
     {
       "name": "get_ticket",
       "description": "Retrieve the status, trust score, risk flags, and full audit record for a previously triaged ticket.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
       "inputSchema": {
         "type": "object",
         "required": ["ticket_id"],
@@ -52,11 +126,55 @@
             "description": "Ticket ID to look up (e.g. IT-1024)"
           }
         }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "Ticket ID"
+          },
+          "source": {
+            "type": "string",
+            "description": "Ticket source (jira, slack, or mcp)"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Creation timestamp"
+          },
+          "decision": {
+            "type": "string",
+            "description": "Routing decision"
+          },
+          "trust_score": {
+            "type": "number",
+            "description": "Recorded trust score"
+          },
+          "risk_override": {
+            "type": "boolean",
+            "description": "Safety override status"
+          },
+          "risk_flags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Risk flags detected"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error details if ticket not found"
+          }
+        }
       }
     },
     {
       "name": "list_tickets",
       "description": "List recent IT support tickets from the Arbiter MCP audit log, optionally filtered by decision outcome (auto_resolve or escalate).",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -72,14 +190,79 @@
             "default": "all"
           }
         }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "Count of tickets returned"
+          },
+          "tickets": {
+            "type": "array",
+            "description": "List of tickets",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "decision": { "type": "string" },
+                "trust_score": { "type": "number" },
+                "created_at": { "type": "string" }
+              }
+            }
+          }
+        }
       }
     },
     {
       "name": "get_metrics",
       "description": "Return Arbiter MCP benchmark metrics: 77.5% classification accuracy, 20% auto-resolution rate, 0% false-positive auto-resolutions, 1.03s median triage latency on N=40 ticket benchmark.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
       "inputSchema": {
         "type": "object",
         "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "classification_accuracy",
+          "auto_resolution_rate",
+          "false_positive_auto_resolutions",
+          "genuine_risk_tickets_caught",
+          "mean_time_to_triage_seconds",
+          "median_time_to_triage_seconds"
+        ],
+        "properties": {
+          "classification_accuracy": {
+            "type": "string",
+            "description": "Classification accuracy (31/40)"
+          },
+          "auto_resolution_rate": {
+            "type": "string",
+            "description": "Safe auto-resolution percentage"
+          },
+          "false_positive_auto_resolutions": {
+            "type": "string",
+            "description": "False positive rate (target: 0.0%)"
+          },
+          "genuine_risk_tickets_caught": {
+            "type": "string",
+            "description": "Critical risk tickets caught (target: 100%)"
+          },
+          "mean_time_to_triage_seconds": {
+            "type": "number",
+            "description": "Mean triage latency in seconds"
+          },
+          "median_time_to_triage_seconds": {
+            "type": "number",
+            "description": "Median triage latency in seconds"
+          }
+        }
       }
     }
   ],
