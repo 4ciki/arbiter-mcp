@@ -13,6 +13,10 @@
 </p>
 
 <p align="center">
+  <a href="README.md"><b>English</b></a> | <a href="README_zh.md"><b>简体中文</b></a> | <a href="README_ar.md"><b>العربية</b></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/LangGraph-1.x-1C3C3C?logo=langchain&logoColor=white" alt="LangGraph" />
   <img src="https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
