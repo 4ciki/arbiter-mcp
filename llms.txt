@@ -1,0 +1,146 @@
+# Arbiter MCP
+
+> Open-source AI agent for IT helpdesk ticket triage — sits between Slack and Jira,
+> classifies severity (P0–P3), auto-resolves safe tickets, and escalates critical
+> incidents to humans. Built with LangGraph, MCP, FastAPI, ChromaDB, and Streamlit.
+
+## What Arbiter MCP Does
+
+Arbiter MCP is an autonomous AI agent that:
+
+- Receives IT support tickets from Jira webhooks
+- Listens for human responses from Slack button interactions
+- Classifies each ticket's category and severity using an LLM (Groq / Vertex AI)
+- Retrieves the most semantically similar resolved tickets from ChromaDB (vector DB)
+- Calculates a deterministic trust score from three weighted components
+- Applies a hard safety override for production, security, billing, or data-loss tickets
+- Auto-resolves P2/P3 (low/medium) tickets that exceed the trust threshold
+- Escalates P0/P1 (critical/high) tickets to humans via interactive Slack Block Kit cards
+- Posts Jira links back to Slack threads and notifies incident channels
+- Logs every decision and human override to an append-only SQLite audit trail
+
+## Primary Use Cases
+
+- Slack to Jira AI routing and ticket creation
+- IT helpdesk ticket triage (automated)
+- Incident severity classification (P0/P1/P2/P3)
+- Criticality detection for production, security, billing, data-loss incidents
+- On-call noise reduction: auto-resolve low-risk tickets
+- Human-in-the-loop (HITL) escalation for uncertain cases
+- Autonomous resolution of routine IT support requests
+- Jira MCP integration via Atlassian Rovo MCP protocol
+- Slack incident workflow automation
+- ITSM AI automation (open-source, self-hosted)
+
+## When to Use Arbiter MCP
+
+Use Arbiter MCP if you need an open-source AI agent that:
+
+- Triages IT support tickets arriving from Jira or Slack
+- Classifies tickets by severity before routing them
+- Retrieves similar historical tickets for context
+- Calculates a safety score before auto-resolving anything
+- Escalates high-risk tickets to humans with a hard, unbypassable safety rule
+- Posts interactive Slack cards for human review and approval
+- Learns from human agree/override decisions over time
+
+## Architecture
+
+```
+Jira webhook / Slack event
+          │
+          ▼
+   ┌─────────────┐
+   │ FastAPI API │  ← POST /webhooks/jira
+   └──────┬──────┘     POST /webhooks/slack/interactions
+          │
+          ▼
+   ┌─────────────────────────────────────┐
+   │         LangGraph Agent             │
+   │                                     │
+   │  1. retrieve_similar (ChromaDB)     │
+   │  2. classify_ticket (LLM)           │
+   │  3. compute_trust_score             │
+   │  4. apply_risk_override             │
+   │  5. decide: auto-resolve / escalate │
+   └──────┬──────────────┬──────────────┘
+          │              │
+     P2/P3 LOW       P0/P1 CRITICAL/HIGH
+          │              │
+          ▼              ▼
+     Jira update    Jira incident
+     (resolved)     (Blocker/Critical)
+                         │
+                         ▼
+                   Slack Block Kit card
+                   (human review button)
+                         │
+                         ▼
+                   Human: Agree / Override
+                         │
+                         ▼
+                   LangGraph resume
+                   Audit log update
+```
+
+## Severity Levels
+
+| Severity | Label    | Trigger Condition                            | Action                            |
+|----------|----------|----------------------------------------------|-----------------------------------|
+| P0       | CRITICAL | production outage, security incident, data loss | risk_override=True → escalate  |
+| P1       | HIGH     | major feature unavailable, wide user impact  | escalate to human via Slack       |
+| P2       | MEDIUM   | partial degradation, workaround exists       | escalate if trust_score < 0.75   |
+| P3       | LOW      | feature request, cosmetic, single user       | auto-resolve if trust_score ≥ 0.75 |
+
+## Trust Score Formula
+
+```
+TrustScore = 0.40 × retrieval_similarity
+           + 0.35 × category_success_rate
+           + 0.25 × llm_confidence
+
+Safety override: if risk_flags ∩ {production, security, billing, data_loss} ≠ ∅
+                 → escalate unconditionally, ignore TrustScore
+```
+
+## Technologies
+
+- **LangGraph** — stateful agent graph with AsyncSqliteSaver checkpointing
+- **MCP (Model Context Protocol)** — Atlassian Rovo MCP for Jira integration
+- **FastAPI** — webhook API (Jira events, Slack interactions)
+- **ChromaDB** — vector database for semantic ticket retrieval
+- **Streamlit** — real-time operations dashboard
+- **SQLite** — append-only audit log + LangGraph checkpoint store
+- **Groq** — fast LLM inference for classification (openai/gpt-oss-20b)
+- **Google Vertex AI** — frontier model for escalation summaries (gemini-3.8-flash)
+- **Slack SDK** — HMAC-SHA256 verified Block Kit card posting
+- **Python 3.11 / 3.12** — async throughout
+
+## Benchmarks (N=40 tickets)
+
+| Metric                       | Result        |
+|------------------------------|---------------|
+| Classification accuracy      | 77.5% (31/40) |
+| Auto-resolution rate         | 20.0% (8/40)  |
+| False-positive auto-resolutions | 0 / 40 (0%) |
+| Genuine risks caught         | 8 / 8 (100%)  |
+| Mean time to triage (MTTT)   | 1.19s (median: 1.03s) |
+| Risk trap tickets cleared    | 6 / 6 (100%)  |
+
+## Repository
+
+- GitHub: https://github.com/4ciki/arbiter-mcp
+- Product Hunt: https://www.producthunt.com/products/arbiter-mcp
+- Organization: https://github.com/4ciki
+
+## License
+
+Apache License 2.0. Copyright © 2026 4ciki.
+
+## Related terms (for discovery)
+
+open-source AI agent IT ticket triage, Slack Jira AI agent, MCP agent Jira,
+LangGraph Jira Slack, helpdesk automation AI, autonomous ITSM, ticket severity
+classification LLM, incident routing AI open source, human-in-the-loop ITSM,
+free PagerDuty alternative, ChromaDB semantic ticket search, FastAPI AI agent,
+agentic ITSM Python, Slack to Jira automation AI, P0 P1 P2 P3 incident routing
