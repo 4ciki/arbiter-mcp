@@ -251,8 +251,236 @@ def create_app(
         )
         return events
 
+    # ── MCP HTTP endpoint (for Smithery / Arcade.dev / Claude / Cursor) ────────
+    @app.post("/mcp", status_code=status.HTTP_200_OK)
+    async def mcp_http_endpoint(request: Request):
+        """
+        MCP-over-HTTP endpoint compatible with Smithery, Arcade.dev, Claude, and Cursor.
+
+        Accepts JSON-RPC 2.0 MCP messages and returns MCP-formatted responses.
+        Supported methods: tools/list, tools/call, initialize
+
+        Smithery registration URL: https://<your-domain>/mcp
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            return Response(
+                content='{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error"},"id":null}',
+                media_type="application/json",
+                status_code=400,
+            )
+
+        method = body.get("method", "")
+        req_id = body.get("id", 1)
+
+        # ── initialize ──────────────────────────────────────────────────────
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "serverInfo": {
+                        "name": "arbiter-mcp",
+                        "version": "1.0.0",
+                        "description": (
+                            "AI-powered Slack → Jira ticket triage agent. "
+                            "Classifies severity (P0-P3), auto-resolves safe tickets, "
+                            "escalates critical incidents. Zero false positives."
+                        ),
+                    },
+                    "capabilities": {"tools": {}},
+                },
+            }
+
+        # ── tools/list ──────────────────────────────────────────────────────
+        if method == "tools/list":
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "tools": [
+                        {
+                            "name": "triage_ticket",
+                            "description": (
+                                "Triage an IT support ticket or Slack message using Arbiter MCP's "
+                                "AI reasoning engine. Classifies severity (P0 CRITICAL → P3 LOW), "
+                                "retrieves similar resolved tickets from ChromaDB, calculates a "
+                                "deterministic trust score, and applies a hard safety override for "
+                                "production/security/billing/data-loss tickets. "
+                                "Returns: category, severity, trust_score, risk_override, decision "
+                                "(auto_resolve or escalate), and recommended Jira priority."
+                            ),
+                            "inputSchema": {
+                                "type": "object",
+                                "required": ["ticket_id", "ticket_text"],
+                                "properties": {
+                                    "ticket_id": {"type": "string", "description": "Unique ticket identifier"},
+                                    "ticket_text": {"type": "string", "description": "Full ticket or Slack message text"},
+                                    "created_at": {"type": "string", "description": "ISO 8601 timestamp (optional)"},
+                                },
+                            },
+                        },
+                        {
+                            "name": "get_ticket",
+                            "description": "Retrieve the status, trust score, and audit record for a triaged ticket.",
+                            "inputSchema": {
+                                "type": "object",
+                                "required": ["ticket_id"],
+                                "properties": {
+                                    "ticket_id": {"type": "string"},
+                                },
+                            },
+                        },
+                        {
+                            "name": "list_tickets",
+                            "description": "List recent IT support tickets from the audit log with filtering by decision outcome.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "limit": {"type": "integer", "default": 10},
+                                    "decision_filter": {
+                                        "type": "string",
+                                        "enum": ["auto_resolve", "escalate", "all"],
+                                        "default": "all",
+                                    },
+                                },
+                            },
+                        },
+                        {
+                            "name": "get_metrics",
+                            "description": (
+                                "Return Arbiter MCP benchmark metrics: 77.5% classification accuracy, "
+                                "20% auto-resolution rate, 0% false positives on N=40 tickets, "
+                                "1.03s median triage latency."
+                            ),
+                            "inputSchema": {"type": "object", "properties": {}},
+                        },
+                    ]
+                },
+            }
+
+        # ── tools/call ──────────────────────────────────────────────────────
+        if method == "tools/call":
+            params = body.get("params", {})
+            tool_name = params.get("name", "")
+            arguments = params.get("arguments", {})
+
+            result_text = await _dispatch_mcp_tool(tool_name, arguments, app.state.repo)
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [{"type": "text", "text": result_text}],
+                    "isError": False,
+                },
+            }
+
+        # ── unknown method ──────────────────────────────────────────────────
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "error": {"code": -32601, "message": f"Method not found: {method}"},
+        }
+
+    @app.get("/.well-known/mcp/server-card.json")
+    async def mcp_server_card():
+        """
+        MCP server card for Smithery/Arcade.dev scanner.
+        Provides static metadata when the server cannot be scanned dynamically.
+        """
+        return {
+            "name": "Arbiter MCP",
+            "description": (
+                "AI-powered Slack → Jira ticket triage agent. "
+                "Classifies IT ticket severity (P0-P3), auto-resolves safe tickets, "
+                "and escalates critical incidents to humans via Slack. "
+                "Zero false-positive auto-resolutions. "
+                "Built with LangGraph, MCP, FastAPI, and ChromaDB."
+            ),
+            "version": "1.0.0",
+            "author": "4ciki",
+            "homepage": "https://github.com/4ciki/arbiter-mcp",
+            "productHunt": "https://www.producthunt.com/products/arbiter-mcp",
+            "license": "Apache-2.0",
+            "tools": ["triage_ticket", "get_ticket", "list_tickets", "get_metrics"],
+            "categories": ["IT helpdesk", "ticket triage", "ITSM", "Jira", "Slack"],
+            "tags": [
+                "it-helpdesk", "ticket-triage", "ai-agent", "langgraph",
+                "mcp", "jira", "slack", "itsm", "open-source",
+            ],
+        }
+
     return app
+
+
+async def _dispatch_mcp_tool(tool_name: str, arguments: dict, repo: Any) -> str:
+    """Shared tool dispatch for the MCP HTTP endpoint."""
+    import json as _json
+    from datetime import datetime, timezone
+
+    if tool_name == "triage_ticket":
+        ticket_id = arguments.get("ticket_id", "UNKNOWN")
+        ticket_text = arguments.get("ticket_text", "")
+        created_at = arguments.get("created_at") or datetime.now(timezone.utc).isoformat()
+
+        try:
+            from schemas import Ticket
+            from agent.graph import get_default_graph, run_graph
+            ticket = Ticket(id=ticket_id, text=ticket_text, created_at=created_at)
+            graph = get_default_graph()
+            result = await run_graph(graph, ticket)
+            return _json.dumps(result, indent=2, default=str)
+        except Exception as exc:
+            # Offline demo: keyword-based risk detection
+            text_lower = ticket_text.lower()
+            risk_flags = [kw for kw in ("production", "security", "billing", "data_loss", "data loss") if kw in text_lower]
+            risk_override = bool(risk_flags)
+            trust_score = 0.0 if risk_override else 0.82
+            decision = "escalate" if risk_override else "auto_resolve"
+            return _json.dumps({
+                "ticket_id": ticket_id,
+                "mode": "offline_demo",
+                "severity": "P0_CRITICAL" if risk_override else "P3_LOW",
+                "trust_score": trust_score,
+                "risk_override": risk_override,
+                "risk_flags": risk_flags,
+                "decision": decision,
+                "note": f"Offline mode (no credentials configured): {exc}",
+            }, indent=2)
+
+    elif tool_name == "get_ticket":
+        try:
+            ticket_id = arguments.get("ticket_id")
+            record = repo.get_ticket(ticket_id)
+            return _json.dumps(record or {"error": f"Ticket {ticket_id!r} not found"}, indent=2, default=str)
+        except Exception as exc:
+            return _json.dumps({"error": str(exc)})
+
+    elif tool_name == "list_tickets":
+        try:
+            limit = min(int(arguments.get("limit", 10)), 50)
+            df = arguments.get("decision_filter", "all")
+            tickets = repo.list_tickets(limit=limit, decision_filter=df)
+            return _json.dumps(tickets, indent=2, default=str)
+        except Exception as exc:
+            return _json.dumps({"error": str(exc), "tickets": []})
+
+    elif tool_name == "get_metrics":
+        benchmark = {
+            "classification_accuracy": "77.5% (31/40)",
+            "auto_resolution_rate": "20.0% (8/40)",
+            "false_positive_auto_resolutions": "0/40 (0.0%)",
+            "genuine_risk_tickets_caught": "8/8 (100%)",
+            "mean_time_to_triage_seconds": 1.19,
+            "median_time_to_triage_seconds": 1.03,
+        }
+        return _json.dumps(benchmark, indent=2)
+
+    return _json.dumps({"error": f"Unknown tool: {tool_name}"})
 
 
 # Default singleton app for ASGI servers (e.g. uvicorn api.main:app)
 app = create_app()
+
