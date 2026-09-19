@@ -25,7 +25,7 @@ services:
       - key: LOG_LEVEL
         value: INFO
       - key: DATABASE_URL
-        value: sqlite+aiosqlite:///./arbiter.db
+        value: sqlite:///./arbiter.db
       - key: PORT
         value: "8000"
 
