@@ -1,0 +1,126 @@
+{
+  "name": "Arbiter MCP",
+  "qualifiedName": "4cikisolutions/arbiter-mcp",
+  "description": "AI-powered Slack → Jira ticket triage agent. Classifies IT ticket severity (P0–P3), auto-resolves safe tickets, and escalates critical incidents to humans via Slack. Zero false-positive auto-resolutions. Built with LangGraph, MCP, FastAPI, and ChromaDB.",
+  "version": "1.0.0",
+  "homepage": "https://github.com/4ciki/arbiter-mcp",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "4ciki",
+    "url": "https://github.com/4ciki"
+  },
+  "repository": "https://github.com/4ciki/arbiter-mcp",
+  "transport": "stdio",
+  "runtimeHint": "python",
+  "startCommand": {
+    "type": "stdio",
+    "command": "python",
+    "args": ["-m", "mcp_server"]
+  },
+  "tools": [
+    {
+      "name": "triage_ticket",
+      "description": "Triage an IT support ticket or Slack message using Arbiter MCP's AI reasoning engine. Classifies severity (P0 CRITICAL → P3 LOW), retrieves similar resolved tickets from ChromaDB, calculates a deterministic trust score, and applies a hard safety override for production/security/billing/data-loss tickets. Returns category, severity, trust_score, risk_override, and decision (auto_resolve or escalate).",
+      "inputSchema": {
+        "type": "object",
+        "required": ["ticket_id", "ticket_text"],
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "Unique ticket identifier (e.g. IT-1024)"
+          },
+          "ticket_text": {
+            "type": "string",
+            "description": "Full text of the IT support ticket or Slack message to triage"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO 8601 creation timestamp (optional, defaults to now)"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_ticket",
+      "description": "Retrieve the status, trust score, risk flags, and full audit record for a previously triaged ticket.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["ticket_id"],
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "Ticket ID to look up (e.g. IT-1024)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_tickets",
+      "description": "List recent IT support tickets from the Arbiter MCP audit log, optionally filtered by decision outcome (auto_resolve or escalate).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of tickets to return (default 10, max 50)",
+            "default": 10
+          },
+          "decision_filter": {
+            "type": "string",
+            "enum": ["auto_resolve", "escalate", "all"],
+            "description": "Filter by decision outcome",
+            "default": "all"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_metrics",
+      "description": "Return Arbiter MCP benchmark metrics: 77.5% classification accuracy, 20% auto-resolution rate, 0% false-positive auto-resolutions, 1.03s median triage latency on N=40 ticket benchmark.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "jiraSiteUrl": {
+        "type": "string",
+        "description": "Jira Cloud site URL (e.g. https://yourorg.atlassian.net). Leave empty for offline/demo mode."
+      },
+      "jiraEmail": {
+        "type": "string",
+        "description": "Jira account email for API authentication."
+      },
+      "jiraApiToken": {
+        "type": "string",
+        "description": "Jira API token (from id.atlassian.com/manage-profile/security/api-tokens)."
+      },
+      "slackBotToken": {
+        "type": "string",
+        "description": "Slack bot token (xoxb-...) for posting escalation cards."
+      },
+      "slackSigningSecret": {
+        "type": "string",
+        "description": "Slack app signing secret for HMAC-SHA256 webhook verification."
+      },
+      "groqApiKey": {
+        "type": "string",
+        "description": "Groq API key for fast LLM classification. Free tier sufficient."
+      },
+      "gcpProjectId": {
+        "type": "string",
+        "description": "Google Cloud project ID for Vertex AI summaries. Optional."
+      }
+    }
+  },
+  "categories": ["IT helpdesk", "ticket triage", "ITSM", "Jira", "Slack", "AI agent"],
+  "tags": [
+    "it-helpdesk", "ticket-triage", "ai-agent", "langgraph",
+    "mcp", "jira", "slack", "itsm", "open-source",
+    "human-in-the-loop", "fastapi", "chromadb", "incident-management"
+  ]
+}
