@@ -251,7 +251,21 @@ def create_app(
         )
         return events
 
+    # ── Root / Health endpoints ────────────────────────────────────────────────
+    @app.get("/", status_code=status.HTTP_200_OK)
+    async def root_info():
+        """Service info and discovery endpoint."""
+        return {
+            "status": "running",
+            "service": "Arbiter MCP",
+            "version": "1.0.0",
+            "mcp_endpoint": "/mcp",
+            "server_card": "/.well-known/mcp/server-card.json",
+            "health": "/health",
+        }
+
     # ── MCP HTTP endpoint (for Smithery / Arcade.dev / Claude / Cursor) ────────
+    @app.post("/", status_code=status.HTTP_200_OK)
     @app.post("/mcp", status_code=status.HTTP_200_OK)
     async def mcp_http_endpoint(request: Request):
         """
@@ -260,7 +274,7 @@ def create_app(
         Accepts JSON-RPC 2.0 MCP messages and returns MCP-formatted responses.
         Supported methods: tools/list, tools/call, initialize
 
-        Smithery registration URL: https://<your-domain>/mcp
+        Smithery registration URL: https://<your-domain>/ or https://<your-domain>/mcp
         """
         try:
             body = await request.json()
@@ -389,9 +403,21 @@ def create_app(
         """
         MCP server card for Smithery/Arcade.dev scanner.
         Provides static metadata when the server cannot be scanned dynamically.
+        Reads the rich server card with input schemas and configSchema from disk.
         """
+        from pathlib import Path
+        import json as _json
+        card_file = Path(__file__).resolve().parent.parent / ".well-known" / "mcp" / "server-card.json"
+        if card_file.is_file():
+            try:
+                with open(card_file, "r", encoding="utf-8") as f:
+                    return _json.load(f)
+            except Exception as exc:
+                log.warning("Could not read static server-card.json: %s", exc)
+
         return {
             "name": "Arbiter MCP",
+            "qualifiedName": "4cikisolutions/arbiter-mcp",
             "description": (
                 "AI-powered Slack → Jira ticket triage agent. "
                 "Classifies IT ticket severity (P0-P3), auto-resolves safe tickets, "
@@ -402,14 +428,7 @@ def create_app(
             "version": "1.0.0",
             "author": "4ciki",
             "homepage": "https://github.com/4ciki/arbiter-mcp",
-            "productHunt": "https://www.producthunt.com/products/arbiter-mcp",
-            "license": "Apache-2.0",
             "tools": ["triage_ticket", "get_ticket", "list_tickets", "get_metrics"],
-            "categories": ["IT helpdesk", "ticket triage", "ITSM", "Jira", "Slack"],
-            "tags": [
-                "it-helpdesk", "ticket-triage", "ai-agent", "langgraph",
-                "mcp", "jira", "slack", "itsm", "open-source",
-            ],
         }
 
     return app
