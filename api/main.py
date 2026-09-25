@@ -10,13 +10,16 @@ Exposes four primary endpoints:
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 from urllib.parse import parse_qs
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi.middleware.cors import CORSMiddleware
 from slack_sdk.signature import SignatureVerifier
 
 from agent.graph import get_default_graph, resume_graph, run_graph
@@ -39,9 +42,125 @@ def create_app(
         description="Autonomous IT helpdesk triage and safety-critical resolution engine.",
     )
 
+    # ── CORS: allow all origins so the open-source dashboard can be self-hosted anywhere ──
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     app.state.repo = repo or ArbiterRepository()
     app.state.graph = graph  # If None, get_default_graph() is used lazily
     app.state.signing_secret = signing_secret or settings.SLACK_SIGNING_SECRET
+
+    # ── Credential proxy — avoids CORS issues in browser-based dashboards ──────
+    @app.post("/api/test-credential")
+    async def test_credential(request: Request):
+        """
+        Server-side proxy that tests third-party API credentials.
+        Accepts: { type, ...credentials }
+        Returns: { ok, message, latency_ms }
+        """
+        import time
+        try:
+            body = await request.json()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid JSON")
+
+        cred_type = body.get("type", "")
+        start = time.time()
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                if cred_type == "jira":
+                    site_url  = body.get("site_url", "").rstrip("/")
+                    email     = body.get("email", "")
+                    api_token = body.get("api_token", "")
+                    if not all([site_url, email, api_token]):
+                        return {"ok": False, "message": "Jira Site URL, Email, and API Token are all required"}
+                    token = base64.b64encode(f"{email}:{api_token}".encode()).decode()
+                    r = await client.get(
+                        f"{site_url}/rest/api/3/myself",
+                        headers={"Authorization": f"Basic {token}", "Accept": "application/json"},
+                    )
+                    if r.status_code == 200:
+                        data = r.json()
+                        return {"ok": True, "message": f"Authenticated as {data.get('displayName', email)}", "latency_ms": int((time.time()-start)*1000)}
+                    elif r.status_code == 401:
+                        return {"ok": False, "message": "Authentication failed — verify your Jira email and API token"}
+                    elif r.status_code == 403:
+                        return {"ok": False, "message": "Access denied — check your Jira site URL and account permissions"}
+                    elif r.status_code == 404:
+                        return {"ok": False, "message": "Jira site not found — verify the Site URL is correct"}
+                    else:
+                        return {"ok": False, "message": f"Jira returned an unexpected response (HTTP {r.status_code})"}
+
+                elif cred_type == "slack":
+                    bot_token = body.get("bot_token", "")
+                    if not bot_token:
+                        return {"ok": False, "message": "Slack Bot Token is required"}
+                    r = await client.post(
+                        "https://slack.com/api/auth.test",
+                        headers={"Authorization": f"Bearer {bot_token}"},
+                    )
+                    data = r.json()
+                    if data.get("ok"):
+                        return {"ok": True, "message": f"Connected to workspace: {data.get('team', 'Unknown')}", "latency_ms": int((time.time()-start)*1000)}
+                    err = data.get("error", "unknown")
+                    msgs = {
+                        "invalid_auth":     "Invalid Slack Bot Token — regenerate it at api.slack.com/apps",
+                        "not_authed":       "Slack token not provided or empty",
+                        "account_inactive": "Slack account is deactivated",
+                        "token_revoked":    "Slack token has been revoked — generate a new one",
+                    }
+                    return {"ok": False, "message": msgs.get(err, f"Slack authentication failed: {err}")}
+
+                elif cred_type == "groq":
+                    api_key = body.get("api_key", "")
+                    if not api_key:
+                        return {"ok": False, "message": "Groq API Key is required"}
+                    r = await client.get(
+                        "https://api.groq.com/openai/v1/models",
+                        headers={"Authorization": f"Bearer {api_key}"},
+                    )
+                    if r.status_code == 200:
+                        return {"ok": True, "message": "Groq API key verified — models accessible", "latency_ms": int((time.time()-start)*1000)}
+                    elif r.status_code == 401:
+                        return {"ok": False, "message": "Invalid Groq API key — check your GroqCloud console"}
+                    elif r.status_code == 429:
+                        return {"ok": False, "message": "Groq rate limit exceeded — wait a moment and retry"}
+                    else:
+                        return {"ok": False, "message": f"Groq returned status {r.status_code}"}
+
+                elif cred_type == "render":
+                    deploy_url = body.get("deploy_url", "").rstrip("/")
+                    if not deploy_url:
+                        return {"ok": False, "message": "Render deploy URL is required"}
+                    r = await client.get(f"{deploy_url}/health")
+                    if r.status_code in (200, 405):
+                        return {"ok": True, "message": "Render service is reachable and healthy", "latency_ms": int((time.time()-start)*1000)}
+                    return {"ok": False, "message": f"Render service returned HTTP {r.status_code}"}
+
+                elif cred_type == "database":
+                    db_url = body.get("database_url", "")
+                    if not db_url:
+                        return {"ok": False, "message": "Database URL is required"}
+                    if db_url.startswith("sqlite"):
+                        return {"ok": True, "message": "SQLite database path configured", "latency_ms": int((time.time()-start)*1000)}
+                    return {"ok": True, "message": "Database URL format accepted", "latency_ms": int((time.time()-start)*1000)}
+
+                else:
+                    return {"ok": False, "message": f"Unknown credential type: {cred_type}"}
+
+            except httpx.TimeoutException:
+                return {"ok": False, "message": "Connection timed out (10s) — service may be unreachable"}
+            except httpx.ConnectError:
+                return {"ok": False, "message": "Cannot connect to service — verify the URL is correct"}
+            except Exception as exc:
+                log.warning("Credential test error for %s: %s", cred_type, exc)
+                return {"ok": False, "message": f"Unexpected error: {str(exc)[:120]}"}
 
     @app.get("/health")
     async def health_check():
