@@ -240,7 +240,22 @@ export default function CredentialsPage({ user, onLog }) {
     setSaving(true);
     try {
       const merged = {...(config||{}), ...draft, configured:true, updatedAt:serverTimestamp()};
-      await setDoc(doc(db,'users',user.uid,'config','credentials'), merged);
+      await setDoc(doc(db,'users',user.uid,'config','credentials'), merged, { merge: true });
+
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          email: user.email || '',
+          displayName: user.displayName || '',
+          configured: true,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+        await setDoc(doc(db, 'sessions', user.uid), {
+          configured: true,
+          lastActive: serverTimestamp(),
+        }, { merge: true });
+      } catch (_) {}
+
       toast.success('Credentials updated!');
       setEditing(null);
       // Re-test this service after save
