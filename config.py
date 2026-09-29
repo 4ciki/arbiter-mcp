@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     # ── Groq ──────────────────────────────────────────────────────────────────
     GROQ_API_KEY: str = ""
 
+    # ── Anthropic (Claude) ─────────────────────────────────────────────────────
+    ANTHROPIC_API_KEY: str = ""
+
+    # ── LLM Provider selection ─────────────────────────────────────────────────
+    # "groq" uses Groq + open-weight models; "claude" uses Anthropic Claude API
+    LLM_PROVIDER: str = "groq"
+
     # ── Storage ────────────────────────────────────────────────────────────────
     CHROMA_PATH: str = "./chroma_data"
     DATABASE_URL: str = "sqlite:///./arbiter.db"
@@ -82,14 +89,24 @@ class Settings(BaseSettings):
         return bool(self.GROQ_API_KEY)
 
     @property
+    def anthropic_configured(self) -> bool:
+        """True when Anthropic (Claude) API key is set."""
+        return bool(self.ANTHROPIC_API_KEY)
+
+    @property
+    def llm_configured(self) -> bool:
+        """True when at least one LLM provider is configured."""
+        return self.groq_configured or self.anthropic_configured
+
+    @property
     def gcp_configured(self) -> bool:
         """True when GCP project and credentials are set."""
         return bool(self.GCP_PROJECT_ID and self.GOOGLE_APPLICATION_CREDENTIALS)
 
     @property
     def is_configured(self) -> bool:
-        """True when at minimum Jira + Groq credentials are present."""
-        return self.jira_configured and self.groq_configured
+        """True when at minimum Jira + at least one LLM provider are present."""
+        return self.jira_configured and self.llm_configured
 
 
 # Module-level singleton. All other modules do:

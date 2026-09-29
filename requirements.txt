@@ -20,6 +20,7 @@ langchain-core>=1.4.7              # langgraph 1.x requires langchain-core>=1.3.
 # ── LLM backends ──────────────────────────────────────────────────────────────
 google-cloud-aiplatform==1.67.1
 groq==0.11.0
+anthropic>=0.34.0       # Claude API (Anthropic) — optional alternative LLM provider
 
 # ── Retrieval ──────────────────────────────────────────────────────────────────
 chromadb>=0.6.0            # 0.5.x has no pre-built chroma-hnswlib wheel for cp312/win_amd64

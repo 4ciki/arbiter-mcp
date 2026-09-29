@@ -8,11 +8,20 @@ import OnboardingWizard   from './pages/OnboardingWizard';
 import Dashboard          from './pages/Dashboard';
 import { Toaster }        from 'react-hot-toast';
 
+/**
+ * App routing:
+ *   no user  → LoginScreen   (Google sign-in)
+ *   user + not configured → OnboardingWizard  (first time only)
+ *   user + configured     → Dashboard         (direct on every subsequent login)
+ *
+ * Once `configured: true` is stored in Firestore, the onboarding wizard
+ * is never shown again. Users update credentials from the Credentials page
+ * (Settings → Manage Credentials or Integrations in sidebar).
+ */
 export default function App() {
   const { user, loading, signIn, signOutUser } = useAuth();
   const [configLoading, setConfigLoading]      = useState(true);
   const [configured, setConfigured]            = useState(false);
-  const [showSetup, setShowSetup]              = useState(false);
 
   useEffect(() => {
     if (!user) { setConfigLoading(false); setConfigured(false); return; }
@@ -39,14 +48,17 @@ export default function App() {
         error:   { iconTheme:{ primary:'#DC2626', secondary:'#FEF2F2' } },
       }} />
 
+      {/* Not logged in → Login */}
       {!user && <LoginScreen signIn={signIn} />}
 
-      {user && (!configured || showSetup) && (
-        <OnboardingWizard user={user} onComplete={() => { setConfigured(true); setShowSetup(false); }} />
+      {/* Logged in but never completed onboarding → Wizard (first time only) */}
+      {user && !configured && (
+        <OnboardingWizard user={user} onComplete={() => setConfigured(true)} />
       )}
 
-      {user && configured && !showSetup && (
-        <Dashboard user={user} signOut={signOutUser} onSetup={() => setShowSetup(true)} />
+      {/* Logged in + configured → go straight to Dashboard */}
+      {user && configured && (
+        <Dashboard user={user} signOut={signOutUser} />
       )}
     </>
   );
