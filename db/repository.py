@@ -32,6 +32,7 @@ from db.models import (
     DecisionRow,
     SessionLocal,
     TicketRow,
+    UserConfigRow,
 )
 from schemas import CategoryStats, Decision, SimilarCase, Ticket, TrustScore
 
@@ -354,3 +355,34 @@ class ArbiterRepository:
                 }
                 for r in rows
             ]
+
+    # ── User credentials & configuration (SQLite / Postgres persistence) ──────
+
+    def save_user_config(self, uid: str, config: dict) -> dict:
+        """Upsert user credentials config in the database."""
+        with self._session() as s:
+            row = s.get(UserConfigRow, uid)
+            if row:
+                merged = {**(row.config_json or {}), **config}
+                row.config_json = merged
+                row.updated_at = _strip_tz(datetime.now(timezone.utc))
+                s.flush()
+                return merged
+            else:
+                row = UserConfigRow(
+                    uid=uid,
+                    config_json=config,
+                    updated_at=_strip_tz(datetime.now(timezone.utc)),
+                )
+                s.add(row)
+                s.flush()
+                return config
+
+    def get_user_config(self, uid: str) -> Optional[dict]:
+        """Retrieve user credentials config by uid."""
+        with self._session() as s:
+            row = s.get(UserConfigRow, uid)
+            if row and row.config_json:
+                return dict(row.config_json)
+            return None
+

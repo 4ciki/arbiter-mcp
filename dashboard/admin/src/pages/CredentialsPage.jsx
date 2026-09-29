@@ -186,14 +186,36 @@ export default function CredentialsPage({ user, onLog }) {
   const [draft,    setDraft]   = useState({});
   const [saving,   setSaving]  = useState(false);
 
-  const API_BASE_URL = (config?.deploy?.deploy_url || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
+  const API_BASE_URL = (config?.deploy?.deploy_url || import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
 
-  // Load config from Firestore
+  // Load config from Backend Database (primary) and Firestore (sync)
   useEffect(() => {
     if (!user?.uid) return;
-    return onSnapshot(doc(db,'users',user.uid,'config','credentials'),
-      snap => { if (snap.exists()) { setConfig(snap.data()); setDraft(snap.data()); } }, ()=>{});
-  }, [user?.uid]);
+
+    // 1. Fetch from Database via REST endpoint
+    fetch(`${API_BASE_URL}/api/user-config?uid=${encodeURIComponent(user.uid)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data && (data.configured || data.jira || data.slack || data.llm)) {
+          setConfig(prev => ({ ...data, ...(prev || {}) }));
+          setDraft(prev => ({ ...data, ...(prev || {}) }));
+        }
+      })
+      .catch(err => console.warn('Backend DB load error:', err));
+
+    // 2. Also listen to Firestore
+    const unsub = onSnapshot(doc(db,'users',user.uid,'config','credentials'),
+      snap => {
+        if (snap.exists()) {
+          const sData = snap.data();
+          setConfig(prev => ({ ...(prev || {}), ...sData }));
+          setDraft(prev => ({ ...(prev || {}), ...sData }));
+        }
+      },
+      () => {}
+    );
+    return unsub;
+  }, [user?.uid, API_BASE_URL]);
 
   // Auto-test all configured services when config loads
   useEffect(() => {
@@ -239,10 +261,24 @@ export default function CredentialsPage({ user, onLog }) {
   async function saveEdit(defId) {
     setSaving(true);
     try {
-      const merged = {...(config||{}), ...draft, configured:true, updatedAt:serverTimestamp()};
-      await setDoc(doc(db,'users',user.uid,'config','credentials'), merged, { merge: true });
+      const merged = {...(config||{}), ...draft, configured:true, updatedAt: new Date().toISOString()};
 
+      // 1. Primary: Save to Database
+      let dbSaved = false;
       try {
+        const resp = await fetch(`${API_BASE_URL}/api/user-config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: user.uid, ...merged }),
+        });
+        if (resp.ok) dbSaved = true;
+      } catch (err) {
+        console.warn('Backend DB save notice:', err);
+      }
+
+      // 2. Secondary: Sync to Firestore
+      try {
+        await setDoc(doc(db,'users',user.uid,'config','credentials'), merged, { merge: true });
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           email: user.email || '',
@@ -256,12 +292,13 @@ export default function CredentialsPage({ user, onLog }) {
         }, { merge: true });
       } catch (_) {}
 
-      toast.success('Credentials updated!');
+      setConfig(merged);
+      toast.success('Credentials saved & active!');
       setEditing(null);
       // Re-test this service after save
       setTimeout(()=>runTest(defId, merged), 600);
     } catch(e) {
-      toast.error('Save failed — check Firestore permissions.');
+      toast.error('Failed to save credentials.');
     } finally { setSaving(false); }
   }
 

@@ -48,6 +48,18 @@ export default function App() {
     setCheckedUid(user.uid);
 
     let isMounted = true;
+    const API_BASE = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
+
+    // 1. Check backend database first
+    fetch(`${API_BASE}/api/user-config?uid=${encodeURIComponent(user.uid)}`)
+      .then(r => r.json())
+      .then(dbCfg => {
+        if (dbCfg && (dbCfg.configured || dbCfg.jira?.site_url || dbCfg.llm?.api_key || dbCfg.groq?.api_key)) {
+          if (isMounted) setConfigStatus('configured');
+        }
+      })
+      .catch(() => {});
+
     const credsRef   = doc(db, 'users', user.uid, 'config', 'credentials');
     const sessionRef = doc(db, 'sessions', user.uid);
     const userRef    = doc(db, 'users', user.uid);
