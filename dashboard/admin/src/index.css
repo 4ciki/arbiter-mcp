@@ -1,0 +1,155 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Surfaces */
+  --bg:           #F0F4FA;
+  --surface:      #FFFFFF;
+  --surface-lo:   #F8FAFB;
+  --surface-hi:   #EEF2F9;
+  --card:         #FFFFFF;
+  --sidebar:      #FFFFFF;
+
+  /* Borders */
+  --border:       #E4E9F2;
+  --border-lo:    #F1F5F9;
+
+  /* Primary — Indigo */
+  --primary:      #4F46E5;
+  --primary-dark: #3730A3;
+  --primary-lo:   #EEF2FF;
+  --primary-mid:  rgba(79,70,229,0.10);
+  --primary-glow: rgba(79,70,229,0.18);
+
+  /* Gold accent */
+  --gold:         #92680A;
+  --gold-bg:      #FFFBEB;
+  --gold-border:  #FDE68A;
+  --gold-text:    #B45309;
+
+  /* Status */
+  --green:        #059669;
+  --green-bg:     #ECFDF5;
+  --green-border: #A7F3D0;
+  --green-text:   #065F46;
+
+  --amber:        #D97706;
+  --amber-bg:     #FFFBEB;
+  --amber-border: #FDE68A;
+  --amber-text:   #92400E;
+
+  --red:          #DC2626;
+  --red-bg:       #FEF2F2;
+  --red-border:   #FECACA;
+  --red-text:     #991B1B;
+
+  --blue:         #2563EB;
+  --blue-bg:      #EFF6FF;
+  --blue-border:  #BFDBFE;
+
+  /* Typography */
+  --text:         #0F172A;
+  --text-dim:     #475569;
+  --text-lo:      #94A3B8;
+  --text-lo2:     #CBD5E1;
+
+  /* Shadows */
+  --shadow-sm:    0 1px 2px rgba(15,23,42,0.04);
+  --shadow:       0 1px 4px rgba(15,23,42,0.06), 0 2px 8px rgba(15,23,42,0.04);
+  --shadow-md:    0 4px 12px rgba(15,23,42,0.08), 0 2px 4px rgba(15,23,42,0.04);
+  --shadow-lg:    0 12px 24px rgba(15,23,42,0.10), 0 4px 8px rgba(15,23,42,0.06);
+  --shadow-xl:    0 24px 48px rgba(15,23,42,0.12), 0 8px 16px rgba(15,23,42,0.08);
+
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-body:    'Inter', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+html { height: 100%; }
+body {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+#root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dashboard locks scroll to its own internal panes */
+.app-dashboard { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+::-webkit-scrollbar         { width: 6px; height: 6px; }
+::-webkit-scrollbar-track   { background: transparent; }
+::-webkit-scrollbar-thumb   { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-lo2); }
+
+/* Material Symbols */
+.mso {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  line-height: 1; vertical-align: middle; display: inline-block;
+  user-select: none; font-style: normal;
+}
+.mso.fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+.mso.sm   { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20; font-size: 16px; }
+
+/* Keyframes */
+@keyframes spin            { to { transform: rotate(360deg); } }
+@keyframes spin-reverse    { to { transform: rotate(-360deg); } }
+@keyframes fade-in         { from { opacity:0; } to { opacity:1; } }
+@keyframes fade-up         { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes pulse-ring      { 0%,100% { transform:scale(1); opacity:0.5; } 50% { transform:scale(1.15); opacity:0.15; } }
+@keyframes shimmer         { 0% { background-position:-400px 0; } 100% { background-position:400px 0; } }
+@keyframes float           { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
+@keyframes scale-in        { from { transform:scale(0.94); opacity:0; } to { transform:scale(1); opacity:1; } }
+@keyframes icon-breathe    { 0%,100% { transform:scale(1);    filter:drop-shadow(0 4px 16px rgba(26,188,156,0.25)) drop-shadow(0 0 8px rgba(243,156,18,0.12)); }
+                              50%    { transform:scale(1.05); filter:drop-shadow(0 8px 30px rgba(26,188,156,0.50)) drop-shadow(0 0 22px rgba(243,156,18,0.28)); } }
+@keyframes icon-float-glow { 0%,100% { transform:translateY(0);    filter:drop-shadow(0 6px 20px rgba(26,188,156,0.30)); }
+                              50%    { transform:translateY(-10px); filter:drop-shadow(0 16px 36px rgba(26,188,156,0.55)) drop-shadow(0 0 20px rgba(243,156,18,0.22)); } }
+@keyframes icon-ping       { 0%   { transform: scale(1); opacity: 0.7; } 100% { transform: scale(1.8); opacity: 0; } }
+@keyframes shimmer-bar     { 0%   { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+
+/* 3D Gyroscope & Orbit Keyframes */
+@keyframes orbit-cw {
+  0%   { transform: rotateX(68deg) rotateZ(0deg); }
+  100% { transform: rotateX(68deg) rotateZ(360deg); }
+}
+@keyframes orbit-ccw {
+  0%   { transform: rotateX(68deg) rotateZ(360deg); }
+  100% { transform: rotateX(68deg) rotateZ(0deg); }
+}
+@keyframes gyro-tilt {
+  0%,100% { transform: perspective(500px) rotateY(-8deg) rotateX(4deg); }
+  50%     { transform: perspective(500px) rotateY(8deg) rotateX(-4deg); }
+}
+@keyframes seam-pulse {
+  0%,100% { opacity: 0.2; transform: scaleY(0.9); }
+  50%     { opacity: 1;   transform: scaleY(1.05); }
+}
+
+.animate-spin          { animation: spin 0.9s linear infinite; }
+.animate-fade-in       { animation: fade-in 0.35s ease both; }
+.animate-fade-up       { animation: fade-up 0.4s ease both; }
+.animate-float         { animation: float 3.5s ease-in-out infinite; }
+.animate-icon-breathe  { animation: icon-breathe 3s ease-in-out infinite; }
+.animate-icon-float    { animation: icon-float-glow 3.5s ease-in-out infinite; }
+.animate-scale-in      { animation: scale-in 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
+.animate-orbit-cw      { animation: orbit-cw 6s linear infinite; }
+.animate-orbit-ccw     { animation: orbit-ccw 4.5s linear infinite; }
+.animate-gyro-tilt     { animation: gyro-tilt 5s ease-in-out infinite; }
+
+/* Utility */
+.surface { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); }
+.text-primary { color: var(--primary); }
+.text-dim { color: var(--text-dim); }
+.text-lo { color: var(--text-lo); }
