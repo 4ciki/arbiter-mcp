@@ -4,7 +4,8 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import toast from 'react-hot-toast';
 import ArbiterLogo from '../components/ArbiterLogo';
-import { JiraLogo, SlackLogo, GroqLogo, ClaudeLogo, RenderLogo, DatabaseLogo, ServiceBrandIcon } from '../components/BrandLogos';
+import { JiraLogo, SlackLogo, GroqIcon, ClaudeLogo, RenderLogo, DatabaseLogo, ServiceBrandIcon } from '../components/BrandLogos';
+
 
 const API_BASE = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
 

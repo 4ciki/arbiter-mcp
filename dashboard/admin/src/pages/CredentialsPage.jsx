@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import toast from 'react-hot-toast';
-import { ServiceBrandIcon, GroqLogo, ClaudeLogo } from '../components/BrandLogos';
+import { ServiceBrandIcon, GroqIcon, ClaudeLogo } from '../components/BrandLogos';
+
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
@@ -108,7 +109,8 @@ function EditForm({ defId, draft, onDraftChange }) {
                   color:active?(p==='groq'?'#C0341D':'#7C5535'):'#64748B',transition:'all 0.15s',
                   display:'flex',alignItems:'center',justifyContent:'center',gap:6,
                 }}>
-                {p === 'groq' ? <GroqLogo size={16}/> : <ClaudeLogo size={16}/>}
+                {p === 'groq' ? <GroqIcon size={16}/> : <ClaudeLogo size={16}/>}
+
                 {p === 'groq' ? 'Groq' : 'Claude'}
               </button>
             );
@@ -402,7 +404,8 @@ export default function CredentialsPage({ user, onLog }) {
                     ? (
                       (config?.llm?.provider||'groq') === 'claude'
                         ? <ClaudeLogo size={22}/>
-                        : <GroqLogo size={22}/>
+                        : <GroqIcon size={22}/>
+
                     )
                     : <ServiceBrandIcon type={def.type} size={22} />
                   }
