@@ -1,5 +1,16 @@
 # syntax=docker/dockerfile:1
-# ── Stage 1: Builder ──────────────────────────────────────────────────────────
+# ── Stage 1: Build Frontend ──────────────────────────────────────────────────
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /build/dashboard/admin
+
+COPY dashboard/admin/package*.json ./
+RUN npm ci --prefer-offline --no-audit
+
+COPY dashboard/admin/ ./
+RUN npm run build
+
+# ── Stage 2: Python Builder ──────────────────────────────────────────────────
 FROM python:3.12-slim AS builder
 
 WORKDIR /build
@@ -15,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-# ── Stage 2: Final Runtime ───────────────────────────────────────────────────
+# ── Stage 3: Final Runtime ───────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
 
 WORKDIR /app
@@ -33,6 +44,9 @@ COPY --from=builder /root/.local /root/.local
 
 # Copy application source
 COPY . .
+
+# Copy built frontend assets from frontend-builder stage
+COPY --from=frontend-builder /build/dashboard/admin/dist ./dashboard/admin/dist
 
 # Ensure storage directories exist
 RUN mkdir -p chroma_data

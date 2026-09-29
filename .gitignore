@@ -1,9 +1,14 @@
 # ── Secrets & credentials ─────────────────────────────────────────────────────
 .env
 .env.*
+*.env
+firebase_creds.env
 !.env.example
 *.json
 !benchmark_results.json
+!dashboard/admin/package.json
+!dashboard/admin/package-lock.json
+!dashboard/admin/.oxlintrc.json
 # (service-account key files are *.json; keep this broad)
 # If you need to commit non-secret JSON, add an explicit !exception below, e.g.:
 # !some_safe_schema.json
