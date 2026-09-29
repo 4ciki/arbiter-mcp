@@ -152,7 +152,22 @@ class AuditLogRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
 
 
+# ── Table: user_configs ────────────────────────────────────────────────────────
+
+class UserConfigRow(Base):
+    """
+    Stores integration credentials and configuration per user UID in SQLite/Postgres.
+    Ensures credentials persist reliably across reloads and multi-device sessions.
+    """
+    __tablename__ = "user_configs"
+
+    uid: Mapped[str] = mapped_column(String, primary_key=True)
+    config_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+
 # ── Create all tables ──────────────────────────────────────────────────────────
 # Called on import so the app starts with the schema in place.
 # For production migrations, replace this with Alembic.
 Base.metadata.create_all(bind=engine)
+

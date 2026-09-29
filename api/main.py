@@ -65,6 +65,67 @@ def create_app(
         log.warning("Could not initialize CaseRetriever: %s", exc)
         app.state.retriever = None
 
+    # ── User Credentials & Configuration Storage (Database Persistence) ─────────
+    @app.get("/api/user-config")
+    async def get_user_config_endpoint(uid: str):
+        """Fetch saved credentials config for a user from the database or server env defaults."""
+        if not uid:
+            raise HTTPException(status_code=400, detail="Missing uid")
+        cfg = app.state.repo.get_user_config(uid)
+        if cfg and cfg.get("configured"):
+            return cfg
+
+        # Fallback to server environment defaults if present
+        has_env_creds = bool(
+            (settings.JIRA_SITE_URL and settings.JIRA_API_TOKEN) or
+            settings.SLACK_BOT_TOKEN or
+            settings.GROQ_API_KEY or
+            settings.ANTHROPIC_API_KEY
+        )
+        env_cfg = {
+            "jira": {
+                "site_url": settings.JIRA_SITE_URL or "",
+                "email": settings.JIRA_EMAIL or "",
+                "api_token": settings.JIRA_API_TOKEN or "",
+            },
+            "slack": {
+                "bot_token": settings.SLACK_BOT_TOKEN or "",
+                "signing_secret": settings.SLACK_SIGNING_SECRET or "",
+                "channel": settings.SLACK_CHANNEL or "#general",
+            },
+            "llm": {
+                "provider": settings.LLM_PROVIDER or ("claude" if settings.ANTHROPIC_API_KEY else "groq"),
+                "api_key": settings.ANTHROPIC_API_KEY if settings.LLM_PROVIDER == "claude" else (settings.GROQ_API_KEY or ""),
+            },
+            "deploy": {
+                "deploy_url": "https://arbiter-mcp.onrender.com",
+            },
+            "database": {
+                "database_url": settings.DATABASE_URL or "sqlite:///./arbiter.db",
+            },
+            "configured": has_env_creds,
+        }
+        if cfg:
+            env_cfg.update(cfg)
+        return env_cfg
+
+    @app.post("/api/user-config")
+    async def save_user_config_endpoint(request: Request):
+        """Save or update user credentials config in the database."""
+        try:
+            body = await request.json()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+        uid = body.get("uid")
+        if not uid:
+            raise HTTPException(status_code=400, detail="Missing uid")
+
+        config = {k: v for k, v in body.items() if k != "uid"}
+        config["configured"] = True
+        saved = app.state.repo.save_user_config(uid, config)
+        return {"ok": True, "config": saved}
+
     # ── Credential proxy — avoids CORS issues in browser-based dashboards ──────
     @app.post("/api/test-credential")
     async def test_credential(request: Request):

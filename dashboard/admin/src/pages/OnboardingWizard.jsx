@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import ArbiterLogo from '../components/ArbiterLogo';
 import { JiraLogo, SlackLogo, GroqLogo, RenderLogo, DatabaseLogo, ServiceBrandIcon } from '../components/BrandLogos';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? '';
+const API_BASE = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
 
 const STEPS = [
   { id:'welcome',  title:'Welcome to Arbiter MCP',    sub:'Set up your AI helpdesk agent in minutes' },
@@ -326,11 +326,29 @@ export default function OnboardingWizard({ user, onComplete }) {
   async function finish() {
     setSaving(true);
     try {
-      await setDoc(doc(db, 'users', user.uid, 'config', 'credentials'), {
-        ...creds, configured: true, updatedAt: serverTimestamp(),
-      }, { merge: true });
+      const payload = {
+        ...creds,
+        configured: true,
+        updatedAt: new Date().toISOString(),
+      };
 
+      // 1. Primary: Save to Database
       try {
+        await fetch(`${API_BASE}/api/user-config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: user.uid, ...payload }),
+        });
+      } catch (err) {
+        console.warn('Backend DB save notice in wizard:', err);
+      }
+
+      // 2. Secondary: Sync to Firestore
+      try {
+        await setDoc(doc(db, 'users', user.uid, 'config', 'credentials'), {
+          ...creds, configured: true, updatedAt: serverTimestamp(),
+        }, { merge: true });
+
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           email: user.email || '',
@@ -346,7 +364,11 @@ export default function OnboardingWizard({ user, onComplete }) {
 
       toast.success('Configuration saved!');
       onComplete(creds);
-    } catch { toast.error('Save failed — check Firestore permissions.'); setSaving(false); }
+    } catch {
+      toast.error('Save failed — please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   const isLast = step===STEPS.length-1;

@@ -14,15 +14,33 @@ export function useCredentials() {
 
   useEffect(() => {
     let unsubSnap = null;
+    const API_BASE = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
 
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (unsubSnap) { unsubSnap(); unsubSnap = null; }
       if (!user) { setCreds(null); setLoading(false); return; }
 
+      // 1. Fetch from Database
+      fetch(`${API_BASE}/api/user-config?uid=${encodeURIComponent(user.uid)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data && (data.configured || data.jira || data.slack || data.llm)) {
+            setCreds(prev => ({ ...data, ...(prev || {}) }));
+            setLoading(false);
+          }
+        })
+        .catch(() => {});
+
+      // 2. Also listen to Firestore
       const ref = doc(db, 'users', user.uid, 'config', 'credentials');
       unsubSnap = onSnapshot(ref,
-        (snap) => { setCreds(snap.exists() ? snap.data() : null); setLoading(false); },
-        ()      => { setLoading(false); }
+        (snap) => {
+          if (snap.exists() && snap.data()) {
+            setCreds(prev => ({ ...(prev || {}), ...snap.data() }));
+          }
+          setLoading(false);
+        },
+        () => { setLoading(false); }
       );
     });
 
