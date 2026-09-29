@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { useAuth }        from './hooks/useAuth';
 import { db }             from './firebase';
@@ -11,18 +11,19 @@ import { Toaster }        from 'react-hot-toast';
 /**
  * Global Cloud-Ready Auth & Routing Flow (Zero localStorage):
  *
- * 1. App loading / Auth initializing:
- *    Show full-screen Arbiter loading screen.
+ * 1. App loading / Auth initializing  →  full-screen loading screen
+ * 2. No authenticated user            →  Google LoginScreen
+ * 3. Authenticated + configured       →  Dashboard (direct, no wizard)
+ * 4. Authenticated + brand new        →  OnboardingWizard
  *
- * 2. No authenticated user:
- *    Render Google LoginScreen.
+ * Race-condition guard (key fix):
+ *   The Firestore onSnapshot often fires AFTER the backend DB fetch resolves.
+ *   When Firestore fires with credsData=null (doc not found or slow network),
+ *   it previously overwrote the DB-confirmed 'configured' → showed the wizard.
  *
- * 3. Authenticated user (fresh login or restored on refresh):
- *    Keep loading screen active while verifying configuration in Firestore.
- *    - If configured (existing user with saved credentials) -> Direct to Dashboard.
- *    - If not configured (brand new user) -> OnboardingWizard.
- *
- * Zero localStorage is used: works across any device, browser, or hosted instance globally.
+ *   Fix: configConfirmedRef is a ref (not state). Once ANY source confirms the
+ *   user is configured, we lock it in permanently for this session and ignore
+ *   any subsequent Firestore snapshot that would downgrade the status.
  */
 
 export default function App() {
@@ -32,117 +33,158 @@ export default function App() {
   const [configStatus, setConfigStatus] = useState('checking');
   const [checkedUid, setCheckedUid]     = useState(null);
 
+  // Ref-based lock: once 'configured' is confirmed by any source,
+  // subsequent Firestore callbacks cannot downgrade it.
+  const configConfirmedRef = useRef(false);
+
   useEffect(() => {
-    // Wait until Firebase Auth determines whether a user is logged in
     if (authLoading) return;
 
-    // No user logged in
     if (!user) {
       setConfigStatus('unconfigured');
       setCheckedUid(null);
+      configConfirmedRef.current = false;
       return;
     }
 
-    // New user session or account switch: start checking in Firestore
+    // New user/session — reset and begin checking
     setConfigStatus('checking');
     setCheckedUid(user.uid);
+    configConfirmedRef.current = false;
 
     let isMounted = true;
-    const API_BASE = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
 
-    // 1. Check backend database first
+    const API_BASE = (
+      import.meta.env.VITE_API_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : '') ||
+      'https://arbiter-mcp.onrender.com'
+    ).replace(/\/$/, '');
+
+    /** Called by either the DB fetch or a Firestore snapshot when configured is confirmed. */
+    const markConfigured = () => {
+      if (!isMounted) return;
+      configConfirmedRef.current = true;
+      setConfigStatus('configured');
+    };
+
+    /** Called only by Firestore when it's certain the user is NOT configured.
+     *  Skipped entirely if the DB already confirmed configured. */
+    const markUnconfigured = () => {
+      if (!isMounted) return;
+      if (configConfirmedRef.current) return; // DB already confirmed — don't downgrade
+      setConfigStatus('unconfigured');
+    };
+
+    // ── 1. Backend database (fastest, primary source of truth) ──────────────
     fetch(`${API_BASE}/api/user-config?uid=${encodeURIComponent(user.uid)}`)
       .then(r => r.json())
       .then(dbCfg => {
-        if (dbCfg && (dbCfg.configured || dbCfg.jira?.site_url || dbCfg.llm?.api_key || dbCfg.groq?.api_key)) {
-          if (isMounted) setConfigStatus('configured');
+        if (dbCfg && (
+          dbCfg.configured ||
+          dbCfg.jira?.site_url ||
+          dbCfg.llm?.api_key ||
+          dbCfg.groq?.api_key
+        )) {
+          markConfigured();
         }
       })
-      .catch(() => {});
+      .catch(() => { /* network error — fall through to Firestore */ });
 
+    // ── 2. Firestore real-time listeners (secondary, for live updates) ───────
     const credsRef   = doc(db, 'users', user.uid, 'config', 'credentials');
     const sessionRef = doc(db, 'sessions', user.uid);
-    const userRef    = doc(db, 'users', user.uid);
 
     let credsData   = null;
     let sessionData = null;
-    let userData    = null;
+    let firestoreResolved = false; // true once at least one snapshot has fired
 
-    const evaluateConfig = (creds, sess, uData) => {
+    const evaluateFirestore = () => {
+      // Never downgrade if DB already confirmed configured
+      if (configConfirmedRef.current) return;
+
       const isConfigured = Boolean(
-        creds?.configured === true ||
-        sess?.configured === true ||
-        uData?.configured === true ||
-        creds?.jira?.site_url ||
-        creds?.llm?.api_key ||
-        creds?.groq?.api_key ||
-        creds?.deploy?.backend_url ||
-        creds?.database?.sqlite_path
+        credsData?.configured === true ||
+        sessionData?.configured === true ||
+        credsData?.jira?.site_url ||
+        credsData?.llm?.api_key ||
+        credsData?.groq?.api_key ||
+        credsData?.deploy?.backend_url
       );
 
-      if (isMounted) {
-        setConfigStatus(isConfigured ? 'configured' : 'unconfigured');
+      if (isConfigured) {
+        markConfigured();
+      } else if (firestoreResolved) {
+        // Only mark unconfigured once Firestore has actually responded
+        // (not before any snapshot has arrived)
+        markUnconfigured();
       }
     };
 
-    // Listen to credentials document
     const unsubCreds = onSnapshot(
       credsRef,
       (snap) => {
         credsData = snap.exists() ? snap.data() : null;
-        evaluateConfig(credsData, sessionData, userData);
+        firestoreResolved = true;
+        evaluateFirestore();
       },
       async (err) => {
-        console.warn('Credentials snapshot error (will attempt fallback read):', err);
+        console.warn('Credentials snapshot error, falling back to getDoc:', err);
         try {
-          const [cSnap, sSnap, uSnap] = await Promise.all([
+          const [cSnap, sSnap] = await Promise.all([
             getDoc(credsRef).catch(() => null),
             getDoc(sessionRef).catch(() => null),
-            getDoc(userRef).catch(() => null),
           ]);
           credsData   = cSnap?.exists() ? cSnap.data() : null;
           sessionData = sSnap?.exists() ? sSnap.data() : null;
-          userData    = uSnap?.exists() ? uSnap.data() : null;
-          evaluateConfig(credsData, sessionData, userData);
-        } catch (_) {
-          if (isMounted) setConfigStatus('unconfigured');
+          firestoreResolved = true;
+          evaluateFirestore();
+        } catch {
+          if (isMounted && !configConfirmedRef.current) markUnconfigured();
         }
       }
     );
 
-    // Listen to session document
     const unsubSession = onSnapshot(
       sessionRef,
       (snap) => {
         sessionData = snap.exists() ? snap.data() : null;
-        evaluateConfig(credsData, sessionData, userData);
+        firestoreResolved = true;
+        evaluateFirestore();
       },
       () => {}
     );
 
+    // ── 3. Safety timeout: never leave the user on the loading screen > 8s ──
+    const timeout = setTimeout(() => {
+      if (isMounted && !configConfirmedRef.current) {
+        markUnconfigured();
+      }
+    }, 8000);
+
     return () => {
       isMounted = false;
+      clearTimeout(timeout);
       unsubCreds();
       unsubSession();
     };
   }, [user?.uid, authLoading]);
 
-  // Sign out cleanly
   const handleSignOut = () => {
     setConfigStatus('checking');
     setCheckedUid(null);
+    configConfirmedRef.current = false;
     signOutUser();
   };
 
-  // When completing the onboarding wizard
   const handleOnboardingComplete = () => {
+    configConfirmedRef.current = true;
     setConfigStatus('configured');
   };
 
-  // ── Render resolution ──────────────────────────────────────────────────
-  // Show full-screen loading spinner whenever auth is settling or config is being checked.
-  // This guarantees ZERO flash of the Onboarding Wizard on reload/refresh.
-  const isResolving = authLoading || (user && (configStatus === 'checking' || checkedUid !== user.uid));
+  // ── Render resolution ──────────────────────────────────────────────────────
+  const isResolving =
+    authLoading ||
+    (user && (configStatus === 'checking' || checkedUid !== user.uid));
 
   if (isResolving) {
     return <ArbiterLogo loading />;
@@ -160,15 +202,12 @@ export default function App() {
         error:   { iconTheme: { primary: '#DC2626', secondary: '#FEF2F2' } },
       }} />
 
-      {/* 1. Not signed in: show Google sign-in */}
       {!user && <LoginScreen signIn={signIn} />}
 
-      {/* 2. Signed in + brand new user (never configured): show OnboardingWizard */}
       {user && configStatus === 'unconfigured' && (
         <OnboardingWizard user={user} onComplete={handleOnboardingComplete} />
       )}
 
-      {/* 3. Signed in + existing configured user: direct to Dashboard */}
       {user && configStatus === 'configured' && (
         <Dashboard user={user} signOut={handleSignOut} />
       )}

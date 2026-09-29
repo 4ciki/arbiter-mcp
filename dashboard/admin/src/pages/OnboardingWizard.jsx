@@ -4,7 +4,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import toast from 'react-hot-toast';
 import ArbiterLogo from '../components/ArbiterLogo';
-import { JiraLogo, SlackLogo, GroqLogo, RenderLogo, DatabaseLogo, ServiceBrandIcon } from '../components/BrandLogos';
+import { JiraLogo, SlackLogo, GroqLogo, ClaudeLogo, RenderLogo, DatabaseLogo, ServiceBrandIcon } from '../components/BrandLogos';
 
 const API_BASE = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
 
@@ -227,20 +227,18 @@ function LLMStep({ provider, apiKey, onProviderChange, onKeyChange, testStatus, 
       {/* Provider cards */}
       <div style={{display:'flex',gap:12,marginBottom:20}}>
         {/* Groq card */}
-        <motion.div whileTap={{scale:0.98}} style={cardStyle(isGroq,'#4F46E5')}
+        <motion.div whileTap={{scale:0.98}} style={cardStyle(isGroq,'#F55036')}
           onClick={()=>onProviderChange('groq')}>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-            <div style={{width:36,height:36,borderRadius:9,background:isGroq?'#4F46E5':'#F8FAFC',
-              border:`1.5px solid ${isGroq?'#4F46E5':'#E4E9F2'}`,
-              display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.18s'}}>
-              <span className="mso fill" style={{fontSize:19,color:isGroq?'white':'#94A3B8'}}>bolt</span>
+            <div style={{width:36,height:36,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <GroqLogo size={32} />
             </div>
             <div>
               <div style={{fontSize:13,fontWeight:800,fontFamily:"'Plus Jakarta Sans',sans-serif",
-                color:isGroq?'#3730A3':'#0F172A'}}>Groq</div>
+                color:isGroq?'#C0341D':'#0F172A'}}>Groq</div>
               <div style={{fontSize:10,color:'#64748B',fontWeight:500}}>Llama · Ultra-fast</div>
             </div>
-            {isGroq && <span className="mso fill sm" style={{marginLeft:'auto',fontSize:18,color:'#4F46E5'}}>radio_button_checked</span>}
+            {isGroq && <span className="mso fill sm" style={{marginLeft:'auto',fontSize:18,color:'#F55036'}}>radio_button_checked</span>}
             {!isGroq && <span className="mso sm" style={{marginLeft:'auto',fontSize:18,color:'#CBD5E1'}}>radio_button_unchecked</span>}
           </div>
           <div style={{fontSize:11,color:'#64748B',lineHeight:1.5}}>
@@ -249,20 +247,18 @@ function LLMStep({ provider, apiKey, onProviderChange, onKeyChange, testStatus, 
         </motion.div>
 
         {/* Claude card */}
-        <motion.div whileTap={{scale:0.98}} style={cardStyle(isClaude,'#D97706')}
+        <motion.div whileTap={{scale:0.98}} style={cardStyle(isClaude,'#CC9B7A')}
           onClick={()=>onProviderChange('claude')}>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-            <div style={{width:36,height:36,borderRadius:9,background:isClaude?'#D97706':'#F8FAFC',
-              border:`1.5px solid ${isClaude?'#D97706':'#E4E9F2'}`,
-              display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.18s'}}>
-              <span className="mso fill" style={{fontSize:19,color:isClaude?'white':'#94A3B8'}}>psychology</span>
+            <div style={{width:36,height:36,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <ClaudeLogo size={32} />
             </div>
             <div>
               <div style={{fontSize:13,fontWeight:800,fontFamily:"'Plus Jakarta Sans',sans-serif",
-                color:isClaude?'#92400E':'#0F172A'}}>Claude</div>
+                color:isClaude?'#7C5535':'#0F172A'}}>Claude</div>
               <div style={{fontSize:10,color:'#64748B',fontWeight:500}}>Anthropic · Frontier</div>
             </div>
-            {isClaude && <span className="mso fill sm" style={{marginLeft:'auto',fontSize:18,color:'#D97706'}}>radio_button_checked</span>}
+            {isClaude && <span className="mso fill sm" style={{marginLeft:'auto',fontSize:18,color:'#CC9B7A'}}>radio_button_checked</span>}
             {!isClaude && <span className="mso sm" style={{marginLeft:'auto',fontSize:18,color:'#CBD5E1'}}>radio_button_unchecked</span>}
           </div>
           <div style={{fontSize:11,color:'#64748B',lineHeight:1.5}}>
@@ -393,7 +389,7 @@ export default function OnboardingWizard({ user, onComplete }) {
             {[
               {brand:'jira',     label:'Jira Service',  color:'#EEF2FF', border:'#C7D2FE' },
               {brand:'slack',    label:'Slack Alerts',  color:'#F8FAFC', border:'#E2E8F0' },
-              {icon:'bolt',      label:'Groq / Claude', color:'#FFF7ED', border:'#FDBA74', text:'#D97706'},
+              {brand:'groq-claude', label:'Groq / Claude', color:'#FFF7ED', border:'#FDBA74' },
               {icon:'analytics', label:'Live Analytics',color:'#EFF6FF', border:'#BFDBFE', text:'#2563EB'},
             ].map(f=>(
               <div key={f.label} style={{
@@ -401,7 +397,12 @@ export default function OnboardingWizard({ user, onComplete }) {
                 background:f.color,border:`1px solid ${f.border}`,borderRadius:10,
                 boxShadow:'0 1px 3px rgba(15,23,42,0.03)',
               }}>
-                {f.brand ? (
+                {f.brand === 'groq-claude' ? (
+                  <div style={{display:'flex',gap:2}}>
+                    <GroqLogo size={18}/>
+                    <ClaudeLogo size={18}/>
+                  </div>
+                ) : f.brand ? (
                   <ServiceBrandIcon type={f.brand} size={20} />
                 ) : (
                   <span className="mso fill sm" style={{color:f.text,fontSize:18}}>{f.icon}</span>
@@ -566,13 +567,13 @@ export default function OnboardingWizard({ user, onComplete }) {
               {stepId === 'llm' && (
                 <div style={{
                   width:44,height:44,borderRadius:12,flexShrink:0,
-                  background:'linear-gradient(135deg,#EEF2FF,#FFF7ED)',
+                  background:'linear-gradient(135deg,#FFF1EE,#FDF4EE)',
                   border:'1px solid #E4E9F2',
-                  display:'flex',alignItems:'center',justifyContent:'center',
+                  display:'flex',alignItems:'center',justifyContent:'center',gap:3,
                   boxShadow:'0 2px 6px rgba(15,23,42,0.04)',
                 }}>
-                  <span className="mso fill" style={{fontSize:24,background:'linear-gradient(135deg,#4F46E5,#D97706)',
-                    WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>psychology</span>
+                  <GroqLogo size={18}/>
+                  <ClaudeLogo size={18}/>
                 </div>
               )}
               <div style={{flex:1}}>
