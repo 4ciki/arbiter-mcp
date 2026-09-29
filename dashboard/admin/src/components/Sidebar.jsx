@@ -3,157 +3,173 @@ import { motion } from 'framer-motion';
 import ArbiterLogo from './ArbiterLogo';
 import { getStoredTickets } from '../data/ticketData';
 
-const NAV_SECTIONS = [
+const NAV = [
   {
-    title: 'Operations',
+    section: 'Operations',
     items: [
-      { id: 'tickets',    icon: 'confirmation_number', label: 'Tickets Queue',   badgeType: 'count' },
-      { id: 'overview',   icon: 'insights',            label: 'Executive ROI',   badge: 'ROI' },
-      { id: 'simulator',  icon: 'science',             label: 'AI Testbench',    badge: 'Lab' },
+      { id: 'tickets',    icon: 'confirmation_number', label: 'Ticket Queue',   badge: 'count' },
+      { id: 'overview',   icon: 'insights',            label: 'ROI Analytics',  tag: 'ROI' },
+      { id: 'simulator',  icon: 'science',             label: 'AI Testbench',   tag: 'Lab' },
     ]
   },
   {
-    title: 'Management',
+    section: 'Workspace',
     items: [
-      { id: 'integrations', icon: 'hub',       label: 'Integrations & Health' },
-      { id: 'logs',         icon: 'terminal',  label: 'Activity & Audit' },
+      { id: 'integrations', icon: 'hub',       label: 'Integrations' },
       { id: 'users',        icon: 'group',     label: 'Team Members' },
-      { id: 'settings',     icon: 'settings',  label: 'Settings & SLA' },
+      { id: 'logs',         icon: 'terminal',  label: 'Audit Logs',   badge: 'logs' },
+      { id: 'settings',     icon: 'settings',  label: 'Settings' },
     ]
   }
 ];
 
 export default function Sidebar({ user, active, setActive, logCount }) {
-  const [ticketsCount, setTicketsCount] = useState(() => getStoredTickets().length);
+  const [ticketCount, setTicketCount] = useState(() => getStoredTickets().length);
 
   useEffect(() => {
-    fetch('/api/metrics')
-      .then(res => res.json())
-      .then(data => {
-        if (data && typeof data.total_ingested === 'number') {
-          setTicketsCount(data.total_ingested);
-        }
-      })
+    fetch('/api/metrics').then(r => r.json())
+      .then(d => { if (d?.total_ingested) setTicketCount(d.total_ingested); })
       .catch(() => {});
   }, [active]);
 
   return (
     <nav style={{
-      width: 236, flexShrink: 0, background: '#FAFBFC',
-      borderRight: '1px solid #E4E9F2',
-      display: 'flex', flexDirection: 'column',
-      boxShadow: '2px 0 8px rgba(15,23,42,0.02)',
+      width: 230,
+      flexShrink: 0,
+      background: '#FFFFFF',
+      borderRight: '1px solid #E2E8F0',
+      display: 'flex',
+      flexDirection: 'column',
+      boxShadow: '1px 0 0 #E2E8F0, 2px 0 12px rgba(15,23,42,0.03)',
     }}>
       {/* Brand */}
-      <div style={{ padding: '18px 16px 14px', borderBottom: '1px solid #F1F5F9' }}>
+      <div style={{
+        padding: '18px 16px 14px',
+        borderBottom: '1px solid #F1F5F9',
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <ArbiterLogo size={34} animate />
+          <ArbiterLogo size={32} animate />
           <div>
             <div style={{
-              fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 17, fontWeight: 800,
-              color: '#0F172A', letterSpacing: '-0.02em'
-            }}>
-              Arbiter
-            </div>
+              fontFamily: "'Plus Jakarta Sans',sans-serif",
+              fontSize: 16, fontWeight: 800,
+              color: '#0F172A', letterSpacing: '-0.025em', lineHeight: 1.1,
+            }}>Arbiter</div>
             <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
-              color: '#6366F1', marginTop: 1, display: 'flex', alignItems: 'center', gap: 4
+              fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
+              textTransform: 'uppercase', color: '#6366F1',
+              marginTop: 3, display: 'flex', alignItems: 'center', gap: 5,
             }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-              MCP Engine v2.4
+              <span style={{
+                width: 5, height: 5, borderRadius: '50%',
+                background: '#10B981', display: 'inline-block',
+                boxShadow: '0 0 0 2px #D1FAE5',
+                animation: 'pulse-dot 2.5s ease-in-out infinite',
+              }} />
+              MCP Engine
             </div>
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <div style={{ flex: 1, padding: '12px 10px', overflowY: 'auto' }}>
-        {NAV_SECTIONS.map((section, idx) => (
-          <div key={section.title} style={{ marginBottom: idx === 0 ? 16 : 8 }}>
+      {/* Nav sections */}
+      <div style={{ flex: 1, padding: '10px 8px', overflowY: 'auto' }}>
+        {NAV.map(({ section, items }, si) => (
+          <div key={section} style={{ marginBottom: si === 0 ? 18 : 6 }}>
             <div style={{
-              fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-              color: '#94A3B8', padding: '6px 8px 6px', fontFamily: "'Plus Jakarta Sans',sans-serif"
-            }}>
-              {section.title}
-            </div>
+              fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
+              textTransform: 'uppercase', color: '#94A3B8',
+              padding: '6px 10px 8px',
+              fontFamily: "'Plus Jakarta Sans',sans-serif",
+            }}>{section}</div>
 
-            {section.items.map(item => {
-              const isActive = active === item.id || (item.id === 'integrations' && active === 'dashboard');
-              const badgeText = item.badgeType === 'count' ? ticketsCount : item.badge;
+            {items.map(item => {
+              const on = active === item.id || (item.id === 'integrations' && active === 'dashboard');
+              const countVal = item.badge === 'count' ? ticketCount : item.badge === 'logs' ? logCount : null;
 
               return (
                 <motion.button key={item.id}
                   onClick={() => setActive(item.id)}
-                  whileTap={{ scale: 0.98 }}
+                  whileTap={{ scale: 0.975 }}
                   style={{
-                    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 9,
                     padding: '8px 10px', cursor: 'pointer', borderRadius: 9,
-                    border: 'none', marginBottom: 3,
-                    background: isActive ? '#EEF2FF' : 'transparent',
-                    color: isActive ? '#4F46E5' : '#475569',
-                    fontSize: 13, fontWeight: isActive ? 600 : 500,
+                    border: 'none', marginBottom: 2, textAlign: 'left',
+                    background: on ? '#EEF2FF' : 'transparent',
+                    color: on ? '#4338CA' : '#475569',
+                    fontSize: 13, fontWeight: on ? 600 : 450,
                     fontFamily: "'Inter',sans-serif",
-                    transition: 'all 0.12s', textAlign: 'left',
-                    boxShadow: isActive ? 'inset 0 0 0 1px #C7D2FE' : 'none'
+                    transition: 'all 0.13s ease',
+                    position: 'relative',
+                    outline: 'none',
                   }}
                   onMouseEnter={e => {
-                    if (!isActive) {
+                    if (!on) {
                       e.currentTarget.style.background = '#F8FAFC';
-                      e.currentTarget.style.color = '#0F172A';
+                      e.currentTarget.style.color = '#1E293B';
                     }
                   }}
                   onMouseLeave={e => {
-                    if (!isActive) {
+                    if (!on) {
                       e.currentTarget.style.background = 'transparent';
                       e.currentTarget.style.color = '#475569';
                     }
                   }}
                 >
-                  <span className="mso" style={{
-                    fontSize: 18, flexShrink: 0,
-                    color: isActive ? '#4F46E5' : '#64748B',
-                    fontVariationSettings: isActive ? "'FILL' 1,'wght' 600,'GRAD' 0,'opsz' 24" : "'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24",
-                  }}>
-                    {item.icon}
-                  </span>
-                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {item.label}
-                  </span>
-
-                  {/* Badges */}
-                  {item.id === 'tickets' && (
-                    <span style={{
-                      padding: '1px 6px', background: isActive ? '#4F46E5' : '#F1F5F9',
-                      border: `1px solid ${isActive ? '#4338CA' : '#CBD5E1'}`,
-                      borderRadius: 999, fontSize: 10, fontWeight: 700,
-                      color: isActive ? 'white' : '#475569',
-                      fontFamily: "'Plus Jakarta Sans',sans-serif",
-                    }}>
-                      {badgeText}
-                    </span>
+                  {/* Active pill bar */}
+                  {on && (
+                    <div style={{
+                      position: 'absolute', left: 0, top: '18%', bottom: '18%',
+                      width: 3, borderRadius: 999,
+                      background: 'linear-gradient(180deg, #6366F1, #4F46E5)',
+                    }} />
                   )}
 
-                  {item.badge && item.id !== 'tickets' && (
+                  <span className="mso" style={{
+                    fontSize: 17, flexShrink: 0,
+                    color: on ? '#4F46E5' : '#94A3B8',
+                    fontVariationSettings: on
+                      ? "'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24"
+                      : "'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24",
+                  }}>{item.icon}</span>
+
+                  <span style={{
+                    flex: 1, whiteSpace: 'nowrap',
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{item.label}</span>
+
+                  {/* Count badge */}
+                  {item.badge === 'count' && (
+                    <span style={{
+                      padding: '1px 7px',
+                      background: on ? '#4F46E5' : '#F1F5F9',
+                      border: `1px solid ${on ? '#4338CA' : '#E2E8F0'}`,
+                      borderRadius: 999, fontSize: 10, fontWeight: 700,
+                      color: on ? 'white' : '#64748B',
+                      fontFamily: "'Plus Jakarta Sans',sans-serif",
+                    }}>{countVal}</span>
+                  )}
+
+                  {/* Tag badge */}
+                  {item.tag && (
                     <span style={{
                       padding: '1px 6px',
-                      background: item.badge === 'Live' ? '#ECFDF5' : '#EEF2FF',
-                      border: `1px solid ${item.badge === 'Live' ? '#A7F3D0' : '#C7D2FE'}`,
-                      borderRadius: 6, fontSize: 9, fontWeight: 700,
-                      color: item.badge === 'Live' ? '#065F46' : '#4F46E5',
+                      background: '#EEF2FF',
+                      border: '1px solid #C7D2FE',
+                      borderRadius: 5, fontSize: 9, fontWeight: 700,
+                      color: '#4F46E5',
                       fontFamily: "'Plus Jakarta Sans',sans-serif",
-                    }}>
-                      {item.badge}
-                    </span>
+                    }}>{item.tag}</span>
                   )}
 
-                  {item.id === 'logs' && logCount > 0 && (
+                  {/* Logs count */}
+                  {item.badge === 'logs' && logCount > 0 && (
                     <span style={{
-                      padding: '1px 6px', background: '#F1F5F9', border: '1px solid #E2E8F0',
+                      padding: '1px 6px',
+                      background: '#F1F5F9', border: '1px solid #E2E8F0',
                       borderRadius: 999, fontSize: 9, fontWeight: 700, color: '#64748B',
                       fontFamily: "'Plus Jakarta Sans',sans-serif",
-                    }}>
-                      {logCount}
-                    </span>
+                    }}>{logCount}</span>
                   )}
                 </motion.button>
               );
@@ -163,45 +179,51 @@ export default function Sidebar({ user, active, setActive, logCount }) {
       </div>
 
       {/* User tray */}
-      <div style={{ padding: 10, borderTop: '1px solid #F1F5F9' }}>
-        <div onClick={() => setActive('settings')} style={{
-          display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px',
-          background: 'white', border: '1px solid #E4E9F2', borderRadius: 10, cursor: 'pointer',
-          boxShadow: '0 1px 3px rgba(15,23,42,0.05)', transition: 'all 0.13s',
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.borderColor = '#C7D2FE';
-          e.currentTarget.style.boxShadow = '0 2px 8px rgba(79,70,229,0.08)';
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.borderColor = '#E4E9F2';
-          e.currentTarget.style.boxShadow = '0 1px 3px rgba(15,23,42,0.05)';
-        }}>
+      <div style={{ padding: '10px 8px 14px', borderTop: '1px solid #F1F5F9' }}>
+        <div
+          onClick={() => setActive('settings')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px',
+            background: '#F8FAFC', border: '1px solid #E2E8F0',
+            borderRadius: 10, cursor: 'pointer', transition: 'all 0.14s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = '#EEF2FF';
+            e.currentTarget.style.borderColor = '#C7D2FE';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = '#F8FAFC';
+            e.currentTarget.style.borderColor = '#E2E8F0';
+          }}
+        >
           {user.photoURL
             ? <img src={user.photoURL} alt="" style={{
                 width: 28, height: 28, borderRadius: '50%',
-                border: '2px solid white', boxShadow: '0 0 0 1px #E4E9F2', flexShrink: 0
+                border: '2px solid white', boxShadow: '0 0 0 1.5px #E2E8F0', flexShrink: 0,
               }} />
             : <div style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                 background: 'linear-gradient(135deg,#4F46E5,#818CF8)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 11, fontWeight: 700, color: 'white',
               }}>
-                <span className="mso fill" style={{ fontSize: 14, color: 'white' }}>person</span>
+                {(user.displayName || user.email || '?').slice(0, 2).toUpperCase()}
               </div>
           }
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontSize: 12, fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap',
-              overflow: 'hidden', textOverflow: 'ellipsis'
+              fontSize: 12, fontWeight: 600, color: '#0F172A',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{user.displayName || user.email}</div>
+            <div style={{
+              fontSize: 10, color: '#94A3B8',
+              display: 'flex', alignItems: 'center', gap: 3, marginTop: 1,
             }}>
-              {user.displayName || user.email}
-            </div>
-            <div style={{ fontSize: 10, color: '#94A3B8', display: 'flex', alignItems: 'center', gap: 3, marginTop: 1 }}>
-              <span className="mso fill sm" style={{ fontSize: 11, color: '#059669' }}>verified</span>
+              <span className="mso fill sm" style={{ fontSize: 10, color: '#10B981' }}>verified</span>
               Admin Operator
             </div>
           </div>
+          <span className="mso sm" style={{ fontSize: 13, color: '#CBD5E1' }}>chevron_right</span>
         </div>
       </div>
     </nav>
