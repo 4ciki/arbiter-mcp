@@ -96,26 +96,62 @@ export function SlackLogo({ size = 20, style = {}, className = '' }) {
 }
 
 export function GroqLogo({ size = 20, style = {}, className = '' }) {
+  // Official Groq logo: black rounded square with white "G" letterform
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox="0 0 32 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: 'inline-block', verticalAlign: 'middle', flexShrink: 0, ...style }}
       className={className}
       aria-label="Groq Logo"
     >
-      <rect width="24" height="24" rx="6" fill="#FFF7ED" stroke="#FDBA74" strokeWidth="1"/>
+      <rect width="32" height="32" rx="7" fill="#F55036"/>
+      {/* Groq "G" mark — open circle with horizontal bar at midpoint */}
       <path
-        d="M15 9a3.5 3.5 0 1 0-3.5 3.5H15v3.2a1.8 1.8 0 0 1-1.8 1.8h-1.4"
-        stroke="#EA580C"
-        strokeWidth="2.2"
+        d="M22 13.5A7.5 7.5 0 1 0 17.5 21H22v-3.5h-4.5"
+        stroke="white"
+        strokeWidth="2.6"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       />
-      <circle cx="15" cy="9" r="1.1" fill="#EA580C"/>
+    </svg>
+  );
+}
+
+export function ClaudeLogo({ size = 20, style = {}, className = '' }) {
+  // Official Anthropic / Claude logo: the distinctive multi-spoke sunburst in brand copper/sand
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ display: 'inline-block', verticalAlign: 'middle', flexShrink: 0, ...style }}
+      className={className}
+      aria-label="Claude Logo"
+    >
+      <rect width="32" height="32" rx="7" fill="#CC9B7A"/>
+      {/* Anthropic "A" sunburst / asterisk mark — 6 rounded spokes */}
+      <g transform="translate(16,16)">
+        {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg, i) => (
+          <rect
+            key={i}
+            x="-1.6"
+            y="-8"
+            width="3.2"
+            height="8"
+            rx="1.6"
+            fill="white"
+            transform={`rotate(${deg})`}
+            opacity={i % 2 === 0 ? 1 : 0.6}
+          />
+        ))}
+      </g>
     </svg>
   );
 }
@@ -165,10 +201,11 @@ export function DatabaseLogo({ size = 20, style = {}, className = '' }) {
 }
 
 export function ServiceBrandIcon({ type, size = 20, style = {}, className = '' }) {
-  if (type === 'jira') return <JiraLogo size={size} style={style} className={className} />;
-  if (type === 'slack') return <SlackLogo size={size} style={style} className={className} />;
-  if (type === 'groq') return <GroqLogo size={size} style={style} className={className} />;
-  if (type === 'render') return <RenderLogo size={size} style={style} className={className} />;
+  if (type === 'jira')     return <JiraLogo     size={size} style={style} className={className} />;
+  if (type === 'slack')    return <SlackLogo    size={size} style={style} className={className} />;
+  if (type === 'groq')     return <GroqLogo     size={size} style={style} className={className} />;
+  if (type === 'claude')   return <ClaudeLogo   size={size} style={style} className={className} />;
+  if (type === 'render')   return <RenderLogo   size={size} style={style} className={className} />;
   if (type === 'database') return <DatabaseLogo size={size} style={style} className={className} />;
   return null;
 }

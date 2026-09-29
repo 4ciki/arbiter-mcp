@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import toast from 'react-hot-toast';
-import { ServiceBrandIcon } from '../components/BrandLogos';
+import { ServiceBrandIcon, GroqLogo, ClaudeLogo } from '../components/BrandLogos';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
@@ -103,11 +103,13 @@ function EditForm({ defId, draft, onDraftChange }) {
                 style={{
                   flex:1,padding:'7px 10px',borderRadius:7,cursor:'pointer',fontSize:12,
                   fontWeight:700,fontFamily:"'Plus Jakarta Sans',sans-serif",
-                  border:`1.5px solid ${active?'#4F46E5':'#E4E9F2'}`,
-                  background:active?'#EEF2FF':'white',
-                  color:active?'#4F46E5':'#64748B',transition:'all 0.15s',
+                  border:`1.5px solid ${active?(p==='groq'?'#F55036':'#CC9B7A'):'#E4E9F2'}`,
+                  background:active?(p==='groq'?'#FFF1EE':'#FDF8F4'):'white',
+                  color:active?(p==='groq'?'#C0341D':'#7C5535'):'#64748B',transition:'all 0.15s',
+                  display:'flex',alignItems:'center',justifyContent:'center',gap:6,
                 }}>
-                {p === 'groq' ? '⚡ Groq' : '🧠 Claude'}
+                {p === 'groq' ? <GroqLogo size={16}/> : <ClaudeLogo size={16}/>}
+                {p === 'groq' ? 'Groq' : 'Claude'}
               </button>
             );
           })}
@@ -397,9 +399,13 @@ export default function CredentialsPage({ user, onLog }) {
                     display:'flex',alignItems:'center',justifyContent:'center',
                     boxShadow:'0 1px 4px rgba(15,23,42,0.04)'}}>
                     {def.id === 'llm'
-                      ? <span className="mso fill" style={{fontSize:20,color: (config?.llm?.provider||'groq')==='claude'?'#D97706':'#4F46E5'}}>{llmIcon}</span>
-                      : <ServiceBrandIcon type={def.type} size={22} />
-                    }
+                    ? (
+                      (config?.llm?.provider||'groq') === 'claude'
+                        ? <ClaudeLogo size={22}/>
+                        : <GroqLogo size={22}/>
+                    )
+                    : <ServiceBrandIcon type={def.type} size={22} />
+                  }
                   </div>
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:700,color:'#0F172A',
