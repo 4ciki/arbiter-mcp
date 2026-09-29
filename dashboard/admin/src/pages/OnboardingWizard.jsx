@@ -326,9 +326,24 @@ export default function OnboardingWizard({ user, onComplete }) {
   async function finish() {
     setSaving(true);
     try {
-      await setDoc(doc(db,'users',user.uid,'config','credentials'),{
-        ...creds, configured:true, updatedAt:serverTimestamp(),
-      });
+      await setDoc(doc(db, 'users', user.uid, 'config', 'credentials'), {
+        ...creds, configured: true, updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          email: user.email || '',
+          displayName: user.displayName || '',
+          configured: true,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+        await setDoc(doc(db, 'sessions', user.uid), {
+          configured: true,
+          lastActive: serverTimestamp(),
+        }, { merge: true });
+      } catch (_) {}
+
       toast.success('Configuration saved!');
       onComplete(creds);
     } catch { toast.error('Save failed — check Firestore permissions.'); setSaving(false); }
