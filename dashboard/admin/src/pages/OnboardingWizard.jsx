@@ -12,7 +12,7 @@ const STEPS = [
   { id:'welcome',  title:'Welcome to Arbiter MCP',    sub:'Set up your AI helpdesk agent in minutes' },
   { id:'jira',     title:'Jira Service Management',   sub:'Receive and triage IT tickets automatically' },
   { id:'slack',    title:'Slack Workspace',           sub:'Get instant agent notifications in Slack' },
-  { id:'groq',     title:'Groq AI Engine',            sub:'Power intelligent triage with Llama-3 70B' },
+  { id:'llm',      title:'AI Engine',                 sub:'Choose your LLM provider to power triage' },
   { id:'deploy',   title:'Arbiter Backend URL',       sub:'Link to your deployed Arbiter server' },
   { id:'database', title:'Database Configuration',   sub:'Persist ticket data and audit logs' },
   { id:'done',     title:'You are all set!',          sub:'Your Arbiter console is configured and ready' },
@@ -44,16 +44,15 @@ const GUIDES = {
     ],
     link: { label:'Open Slack API Dashboard', url:'https://api.slack.com/apps', type:'slack' },
   },
-  groq: {
-    title: 'How to get your Groq API key',
+  llm: {
+    title: 'Choosing your AI provider',
     steps: [
-      { icon:'open_in_new', text:'Visit console.groq.com and create a free account.' },
-      { icon:'verified_user', text:'Verify your email address to activate your account.' },
-      { icon:'key', text:'In the left sidebar, click "API Keys" → Create API Key.' },
-      { icon:'label', text:'Name it (e.g. "Arbiter MCP") and click Submit.' },
-      { icon:'content_copy', text:'Copy the API key immediately — it starts with gsk_.' },
+      { icon:'speed', text:'Groq: Ultra-fast inference with Llama models. Free tier available. Best for high-volume triage.' },
+      { icon:'psychology', text:'Claude: Anthropic\'s frontier model. Better reasoning for complex escalations. Paid API.' },
+      { icon:'key', text:'You only need one provider — pick the one you already have access to.' },
+      { icon:'settings_backup_restore', text:'You can change your provider any time from the Credentials page.' },
     ],
-    link: { label:'Open GroqCloud Console', url:'https://console.groq.com/keys', type:'groq' },
+    link: null,
   },
   deploy: {
     title: 'Finding your Arbiter backend URL',
@@ -80,7 +79,7 @@ const GUIDES = {
 const INIT = {
   jira:     { site_url:'', email:'', api_token:'' },
   slack:    { bot_token:'', signing_secret:'', channel:'#general' },
-  groq:     { api_key:'' },
+  llm:      { provider:'groq', api_key:'' },
   deploy:   { deploy_url:'https://arbiter-mcp.onrender.com' },
   database: { database_url:'sqlite:///./arbiter.db' },
 };
@@ -210,6 +209,94 @@ function GuidePanel({ guide }) {
   );
 }
 
+// ── LLM Provider Picker ─────────────────────────────────────────────────────
+function LLMStep({ provider, apiKey, onProviderChange, onKeyChange, testStatus, testMsg, onTest }) {
+  const isGroq   = provider === 'groq';
+  const isClaude = provider === 'claude';
+
+  const cardStyle = (active, accent) => ({
+    flex:1, padding:'16px 18px', borderRadius:12, cursor:'pointer',
+    border:`2px solid ${active ? accent : '#E4E9F2'}`,
+    background: active ? (accent === '#4F46E5' ? '#EEF2FF' : '#FFF7ED') : 'white',
+    transition:'all 0.18s',
+    boxShadow: active ? `0 0 0 3px ${accent}22` : '0 1px 3px rgba(15,23,42,0.04)',
+  });
+
+  return (
+    <div style={{padding:'20px 28px',flex:1}}>
+      {/* Provider cards */}
+      <div style={{display:'flex',gap:12,marginBottom:20}}>
+        {/* Groq card */}
+        <motion.div whileTap={{scale:0.98}} style={cardStyle(isGroq,'#4F46E5')}
+          onClick={()=>onProviderChange('groq')}>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+            <div style={{width:36,height:36,borderRadius:9,background:isGroq?'#4F46E5':'#F8FAFC',
+              border:`1.5px solid ${isGroq?'#4F46E5':'#E4E9F2'}`,
+              display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.18s'}}>
+              <span className="mso fill" style={{fontSize:19,color:isGroq?'white':'#94A3B8'}}>bolt</span>
+            </div>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,fontFamily:"'Plus Jakarta Sans',sans-serif",
+                color:isGroq?'#3730A3':'#0F172A'}}>Groq</div>
+              <div style={{fontSize:10,color:'#64748B',fontWeight:500}}>Llama · Ultra-fast</div>
+            </div>
+            {isGroq && <span className="mso fill sm" style={{marginLeft:'auto',fontSize:18,color:'#4F46E5'}}>radio_button_checked</span>}
+            {!isGroq && <span className="mso sm" style={{marginLeft:'auto',fontSize:18,color:'#CBD5E1'}}>radio_button_unchecked</span>}
+          </div>
+          <div style={{fontSize:11,color:'#64748B',lineHeight:1.5}}>
+            Free tier available. Fastest inference for high-volume IT triage.
+          </div>
+        </motion.div>
+
+        {/* Claude card */}
+        <motion.div whileTap={{scale:0.98}} style={cardStyle(isClaude,'#D97706')}
+          onClick={()=>onProviderChange('claude')}>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+            <div style={{width:36,height:36,borderRadius:9,background:isClaude?'#D97706':'#F8FAFC',
+              border:`1.5px solid ${isClaude?'#D97706':'#E4E9F2'}`,
+              display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.18s'}}>
+              <span className="mso fill" style={{fontSize:19,color:isClaude?'white':'#94A3B8'}}>psychology</span>
+            </div>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,fontFamily:"'Plus Jakarta Sans',sans-serif",
+                color:isClaude?'#92400E':'#0F172A'}}>Claude</div>
+              <div style={{fontSize:10,color:'#64748B',fontWeight:500}}>Anthropic · Frontier</div>
+            </div>
+            {isClaude && <span className="mso fill sm" style={{marginLeft:'auto',fontSize:18,color:'#D97706'}}>radio_button_checked</span>}
+            {!isClaude && <span className="mso sm" style={{marginLeft:'auto',fontSize:18,color:'#CBD5E1'}}>radio_button_unchecked</span>}
+          </div>
+          <div style={{fontSize:11,color:'#64748B',lineHeight:1.5}}>
+            Frontier reasoning. Best for complex escalation judgments.
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Dynamic API key field */}
+      <AnimatePresence mode="wait">
+        <motion.div key={provider}
+          initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-6}}
+          transition={{duration:0.18}}>
+          {isGroq && (
+            <Field label="Groq API Key" type="password" placeholder="gsk_..."
+              value={apiKey} onChange={onKeyChange}
+              hint="Starts with gsk_ · Free tier at console.groq.com/keys" />
+          )}
+          {isClaude && (
+            <Field label="Anthropic API Key" type="password" placeholder="sk-ant-..."
+              value={apiKey} onChange={onKeyChange}
+              hint="Starts with sk-ant- · Get it at console.anthropic.com" />
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <div style={{display:'flex',alignItems:'center',gap:12,marginTop:4}}>
+        <TestBtn status={testStatus||'idle'} onTest={onTest} />
+        {testMsg&&<span style={{fontSize:12,color:testStatus==='ok'?'#065F46':'#991B1B'}}>{testMsg}</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function OnboardingWizard({ user, onComplete }) {
   const [step, setStep]     = useState(0);
   const [creds, setCreds]   = useState(INIT);
@@ -262,15 +349,15 @@ export default function OnboardingWizard({ user, onComplete }) {
             Let's set up Arbiter
           </div>
           <div style={{fontSize:14,color:'#475569',lineHeight:1.8,maxWidth:320,marginBottom:32}}>
-            This wizard will guide you through connecting Jira, Slack, Groq AI,
+            This wizard will guide you through connecting Jira, Slack, your AI engine,
             and your database — each takes about 2 minutes.
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,width:'100%',maxWidth:360}}>
             {[
-              {brand:'jira',      label:'Jira Service', color:'#EEF2FF', border:'#C7D2FE' },
-              {brand:'slack',     label:'Slack Alerts', color:'#F8FAFC', border:'#E2E8F0' },
-              {brand:'groq',      label:'Groq AI Triage',color:'#FFF7ED', border:'#FDBA74' },
-              {icon:'analytics',  label:'Live Analytics',color:'#EFF6FF', border:'#BFDBFE', text:'#2563EB'},
+              {brand:'jira',     label:'Jira Service',  color:'#EEF2FF', border:'#C7D2FE' },
+              {brand:'slack',    label:'Slack Alerts',  color:'#F8FAFC', border:'#E2E8F0' },
+              {icon:'bolt',      label:'Groq / Claude', color:'#FFF7ED', border:'#FDBA74', text:'#D97706'},
+              {icon:'analytics', label:'Live Analytics',color:'#EFF6FF', border:'#BFDBFE', text:'#2563EB'},
             ].map(f=>(
               <div key={f.label} style={{
                 display:'flex',alignItems:'center',gap:10,padding:'10px 14px',
@@ -280,7 +367,7 @@ export default function OnboardingWizard({ user, onComplete }) {
                 {f.brand ? (
                   <ServiceBrandIcon type={f.brand} size={20} />
                 ) : (
-                  <span className="mso sm" style={{color:f.text,fontSize:18}}>{f.icon}</span>
+                  <span className="mso fill sm" style={{color:f.text,fontSize:18}}>{f.icon}</span>
                 )}
                 <span style={{fontSize:12.5,fontWeight:700,color:'#0F172A',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{f.label}</span>
               </div>
@@ -321,16 +408,16 @@ export default function OnboardingWizard({ user, onComplete }) {
         </div>
       </div>
     ),
-    groq:(
-      <div style={{padding:'24px 32px',flex:1}}>
-        <Field label="Groq API Key" type="password" placeholder="gsk_..."
-          value={creds.groq.api_key} onChange={v=>update('groq','api_key',v)}
-          hint="Starts with gsk_ · Free tier available at console.groq.com"/>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginTop:4}}>
-          <TestBtn status={tests.groq||'idle'} onTest={()=>testCred('groq',{api_key:creds.groq.api_key})}/>
-          {testMsg.groq&&<span style={{fontSize:12,color:tests.groq==='ok'?'#065F46':'#991B1B'}}>{testMsg.groq}</span>}
-        </div>
-      </div>
+    llm:(
+      <LLMStep
+        provider={creds.llm.provider}
+        apiKey={creds.llm.api_key}
+        onProviderChange={v=>update('llm','provider',v)}
+        onKeyChange={v=>update('llm','api_key',v)}
+        testStatus={tests[creds.llm.provider]||'idle'}
+        testMsg={testMsg[creds.llm.provider]||''}
+        onTest={()=>testCred(creds.llm.provider,{api_key:creds.llm.api_key})}
+      />
     ),
     deploy:(
       <div style={{padding:'24px 32px',flex:1}}>
@@ -367,7 +454,7 @@ export default function OnboardingWizard({ user, onComplete }) {
           color:'#0F172A',marginBottom:10}}>All configured!</div>
         <div style={{fontSize:13,color:'#64748B',lineHeight:1.7,maxWidth:280}}>
           Your credentials are saved. Arbiter will use them to connect to your services.
-          You can update them anytime from Settings.
+          You can update them anytime from the <strong>Credentials</strong> page.
         </div>
       </div>
     ),
@@ -428,15 +515,27 @@ export default function OnboardingWizard({ user, onComplete }) {
             }}>
             {/* Card top */}
             <div style={{padding:'22px 32px 18px',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:14}}>
-              {stepId !== 'welcome' && stepId !== 'done' && (
+              {stepId !== 'welcome' && stepId !== 'done' && stepId !== 'llm' && (
                 <div style={{
                   width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                  background: stepId==='jira'?'#EEF2FF':stepId==='slack'?'#FFFFFF':stepId==='groq'?'#FFF7ED':'#F8FAFC',
-                  border: `1px solid ${stepId==='jira'?'#C7D2FE':stepId==='slack'?'#E2E8F0':stepId==='groq'?'#FDBA74':'#E2E8F0'}`,
+                  background: stepId==='jira'?'#EEF2FF':stepId==='slack'?'#FFFFFF':'#F8FAFC',
+                  border: `1px solid ${stepId==='jira'?'#C7D2FE':stepId==='slack'?'#E2E8F0':'#E2E8F0'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: '0 2px 6px rgba(15,23,42,0.04)',
                 }}>
                   <ServiceBrandIcon type={stepId} size={24} />
+                </div>
+              )}
+              {stepId === 'llm' && (
+                <div style={{
+                  width:44,height:44,borderRadius:12,flexShrink:0,
+                  background:'linear-gradient(135deg,#EEF2FF,#FFF7ED)',
+                  border:'1px solid #E4E9F2',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  boxShadow:'0 2px 6px rgba(15,23,42,0.04)',
+                }}>
+                  <span className="mso fill" style={{fontSize:24,background:'linear-gradient(135deg,#4F46E5,#D97706)',
+                    WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>psychology</span>
                 </div>
               )}
               <div style={{flex:1}}>

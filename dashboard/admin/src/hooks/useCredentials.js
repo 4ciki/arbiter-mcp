@@ -5,11 +5,11 @@ import { onAuthStateChanged } from 'firebase/auth';
 
 /**
  * Returns the saved credentials config from Firestore for the current user.
- * Shape: { jira, slack, groq, deploy, database, configured }
- * Also exposes derived booleans: jiraConnected, slackConnected, groqConnected.
+ * Shape: { jira, slack, llm: { provider, api_key }, groq (legacy), deploy, database, configured }
+ * Derived booleans: jiraConnected, slackConnected, llmConnected, llmProvider
  */
 export function useCredentials() {
-  const [creds, setCreds] = useState(null);
+  const [creds, setCreds]   = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,7 +31,13 @@ export function useCredentials() {
 
   const jiraConnected  = !!(creds?.jira?.site_url && creds?.jira?.email && creds?.jira?.api_token);
   const slackConnected = !!(creds?.slack?.bot_token);
-  const groqConnected  = !!(creds?.groq?.api_key);
 
-  return { creds, loading, jiraConnected, slackConnected, groqConnected };
+  // Support both new llm.api_key and legacy groq.api_key
+  const llmConnected   = !!(creds?.llm?.api_key || creds?.groq?.api_key);
+  const llmProvider    = creds?.llm?.provider || (creds?.groq?.api_key ? 'groq' : 'groq');
+
+  // Legacy compat
+  const groqConnected  = !!(creds?.llm?.api_key || creds?.groq?.api_key);
+
+  return { creds, loading, jiraConnected, slackConnected, llmConnected, llmProvider, groqConnected };
 }

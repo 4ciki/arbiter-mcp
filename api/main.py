@@ -144,6 +144,29 @@ def create_app(
                     else:
                         return {"ok": False, "message": f"Groq returned status {r.status_code}"}
 
+                elif cred_type == "claude":
+                    api_key = body.get("api_key", "")
+                    if not api_key:
+                        return {"ok": False, "message": "Anthropic API Key is required"}
+                    # Use a minimal models list call to verify the key
+                    r = await client.get(
+                        "https://api.anthropic.com/v1/models",
+                        headers={
+                            "x-api-key": api_key,
+                            "anthropic-version": "2023-06-01",
+                        },
+                    )
+                    if r.status_code == 200:
+                        return {"ok": True, "message": "Claude (Anthropic) API key verified — models accessible", "latency_ms": int((time.time()-start)*1000)}
+                    elif r.status_code == 401:
+                        return {"ok": False, "message": "Invalid Anthropic API key — check console.anthropic.com"}
+                    elif r.status_code == 403:
+                        return {"ok": False, "message": "API key does not have sufficient permissions"}
+                    elif r.status_code == 429:
+                        return {"ok": False, "message": "Anthropic rate limit exceeded — wait a moment and retry"}
+                    else:
+                        return {"ok": False, "message": f"Anthropic returned status {r.status_code}"}
+
                 elif cred_type == "render":
                     deploy_url = body.get("deploy_url", "").rstrip("/")
                     if not deploy_url:

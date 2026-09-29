@@ -10,11 +10,10 @@ import UsersPage       from './UsersPage';
 import LogsPage        from './LogsPage';
 import SettingsPage    from './SettingsPage';
 
-export default function Dashboard({ user, signOut, onSetup }) {
-  // Default to tickets queue for immediate operational command visibility
+export default function Dashboard({ user, signOut }) {
   const [active, setActive] = useState('tickets');
   const [logs, setLogs] = useState([
-    { time: new Date().toTimeString().slice(0,8), msg: 'Arbiter MCP Engine connected (Render + Groq)', level: 'success' },
+    { time: new Date().toTimeString().slice(0,8), msg: 'Arbiter MCP Engine connected (Render + AI Engine)', level: 'success' },
     { time: new Date().toTimeString().slice(0,8), msg: 'ChromaDB vector store indexed 65 benchmark cases', level: 'info' },
     { time: new Date().toTimeString().slice(0,8), msg: 'Dual webhook listeners active for Jira & Slack', level: 'info' },
   ]);
@@ -24,10 +23,7 @@ export default function Dashboard({ user, signOut, onSetup }) {
     setLogs(l => [{ time, msg, level }, ...l].slice(0, 100));
   };
 
-  const handleNavigate = to => {
-    if (to === 'setup') onSetup?.();
-    else setActive(to);
-  };
+  const handleNavigate = to => setActive(to);
 
   const PAGE = {
     tickets:      <TicketsPage onNavigate={handleNavigate} />,
@@ -37,7 +33,7 @@ export default function Dashboard({ user, signOut, onSetup }) {
     dashboard:    <CredentialsPage user={user} onLog={addLog} onNavigate={handleNavigate} />,
     users:        <UsersPage user={user} onNavigate={handleNavigate} />,
     logs:         <LogsPage logs={logs} />,
-    settings:     <SettingsPage user={user} signOut={signOut} onSetup={onSetup} />,
+    settings:     <SettingsPage user={user} signOut={signOut} onNavigate={handleNavigate} />,
   };
 
   return (
