@@ -4,7 +4,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import toast from 'react-hot-toast';
 import ArbiterLogo from '../components/ArbiterLogo';
-import { JiraLogo, SlackLogo, GroqIcon, ClaudeLogo, RenderLogo, DatabaseLogo, ServiceBrandIcon } from '../components/BrandLogos';
+import { JiraLogo, SlackLogo, GroqLogo, GroqIcon, ClaudeLogo, RenderLogo, DatabaseLogo, ServiceBrandIcon } from '../components/BrandLogos';
 
 
 const API_BASE = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
@@ -232,7 +232,7 @@ function LLMStep({ provider, apiKey, onProviderChange, onKeyChange, testStatus, 
           onClick={()=>onProviderChange('groq')}>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
             <div style={{width:36,height:36,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <GroqLogo size={32} />
+              <GroqIcon size={32} />
             </div>
             <div>
               <div style={{fontSize:13,fontWeight:800,fontFamily:"'Plus Jakarta Sans',sans-serif",
@@ -400,7 +400,7 @@ export default function OnboardingWizard({ user, onComplete }) {
               }}>
                 {f.brand === 'groq-claude' ? (
                   <div style={{display:'flex',gap:2}}>
-                    <GroqLogo size={18}/>
+                    <GroqIcon size={18}/>
                     <ClaudeLogo size={18}/>
                   </div>
                 ) : f.brand ? (
@@ -573,7 +573,7 @@ export default function OnboardingWizard({ user, onComplete }) {
                   display:'flex',alignItems:'center',justifyContent:'center',gap:3,
                   boxShadow:'0 2px 6px rgba(15,23,42,0.04)',
                 }}>
-                  <GroqLogo size={18}/>
+                  <GroqIcon size={18}/>
                   <ClaudeLogo size={18}/>
                 </div>
               )}
