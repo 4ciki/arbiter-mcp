@@ -412,6 +412,7 @@ def create_app(
                 resolved_at = decision.resolved_at.isoformat() if decision.resolved_at else None
 
             item["trust_score"] = trust_val
+            item["action"] = action
             item["trust_breakdown"] = {
                 "retrieval": round(r_comp, 3),
                 "category_success": round(cat_comp, 3),
@@ -429,10 +430,10 @@ def create_app(
                 if ev.get("score_components") and "category" in ev["score_components"]:
                     category = ev["score_components"]["category"]
                     break
-            if category == "general" or category == "vpn":
+            if category == "general":
                 text_lower = t.text.lower()
                 if any(w in text_lower for w in ("vpn", "network", "firewall", "dns", "wifi", "ip")):
-                    category = "network"
+                    category = "vpn"
                 elif any(w in text_lower for w in ("monitor", "dock", "laptop", "keyboard", "battery", "hardware")):
                     category = "hardware"
                 elif any(w in text_lower for w in ("access", "permission", "password", "mfa", "login", "auth")):
