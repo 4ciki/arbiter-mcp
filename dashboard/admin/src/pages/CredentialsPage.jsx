@@ -8,6 +8,14 @@ import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import toast from 'react-hot-toast';
 import { ServiceBrandIcon, GroqIcon, ClaudeLogo } from '../components/BrandLogos';
+import {
+  getLocalConfig,
+  saveLocalConfig,
+  saveBackendConfig,
+  saveFirestoreConfig,
+  loadResilientConfig,
+  mergeConfigs
+} from '../data/configStorage';
 
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
@@ -192,33 +200,56 @@ export default function CredentialsPage({ user, onLog }) {
 
   const API_BASE_URL = (config?.deploy?.deploy_url || import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
 
-  // Load config from Backend Database (primary) and Firestore (sync)
+  // Load config from LocalStorage immediately, then Backend Database & Firestore with auto-heal
   useEffect(() => {
     if (!user?.uid) return;
 
-    // 1. Fetch from Database via REST endpoint
-    fetch(`${API_BASE_URL}/api/user-config?uid=${encodeURIComponent(user.uid)}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data && (data.configured || data.jira || data.slack || data.llm)) {
-          setConfig(prev => ({ ...data, ...(prev || {}) }));
-          setDraft(prev => ({ ...data, ...(prev || {}) }));
+    // 1. Instant local read so UI is never blank
+    const local = getLocalConfig(user.uid);
+    if (local) {
+      setConfig(prev => mergeConfigs(prev || {}, local));
+      setDraft(prev => mergeConfigs(prev || {}, local));
+    }
+
+    // 2. Multi-tier resilient load (re-seeds backend if backend was wiped)
+    loadResilientConfig({ apiBase: API_BASE_URL, uid: user.uid, db })
+      .then(resilient => {
+        if (resilient) {
+          setConfig(prev => mergeConfigs(prev || {}, resilient));
+          setDraft(prev => mergeConfigs(prev || {}, resilient));
         }
       })
-      .catch(err => console.warn('Backend DB load error:', err));
+      .catch(err => console.warn('Resilient config load error:', err));
 
-    // 2. Also listen to Firestore
-    const unsub = onSnapshot(doc(db,'users',user.uid,'config','credentials'),
+    // 3. Listen to Firestore real-time updates
+    const unsub = onSnapshot(doc(db, 'users', user.uid, 'config', 'credentials'),
       snap => {
-        if (snap.exists()) {
+        if (snap.exists() && snap.data()) {
           const sData = snap.data();
-          setConfig(prev => ({ ...(prev || {}), ...sData }));
-          setDraft(prev => ({ ...(prev || {}), ...sData }));
+          setConfig(prev => {
+            const merged = mergeConfigs(prev || {}, sData);
+            saveLocalConfig(user.uid, merged);
+            return merged;
+          });
+          setDraft(prev => mergeConfigs(prev || {}, sData));
         }
       },
       () => {}
     );
-    return unsub;
+
+    // 4. Listen to cross-component config updates
+    const handleConfigEvent = (e) => {
+      if (e.detail) {
+        setConfig(prev => mergeConfigs(prev || {}, e.detail));
+        setDraft(prev => mergeConfigs(prev || {}, e.detail));
+      }
+    };
+    window.addEventListener('arbiter_config_changed', handleConfigEvent);
+
+    return () => {
+      unsub();
+      window.removeEventListener('arbiter_config_changed', handleConfigEvent);
+    };
   }, [user?.uid, API_BASE_URL]);
 
   // Auto-test all configured services when config loads
@@ -265,45 +296,30 @@ export default function CredentialsPage({ user, onLog }) {
   async function saveEdit(defId) {
     setSaving(true);
     try {
-      const merged = {...(config||{}), ...draft, configured:true, updatedAt: new Date().toISOString()};
+      const merged = mergeConfigs(config || {}, draft || {}, {
+        configured: true,
+        updatedAt: new Date().toISOString()
+      });
 
-      // 1. Primary: Save to Database
-      let dbSaved = false;
-      try {
-        const resp = await fetch(`${API_BASE_URL}/api/user-config`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid: user.uid, ...merged }),
-        });
-        if (resp.ok) dbSaved = true;
-      } catch (err) {
-        console.warn('Backend DB save notice:', err);
-      }
+      // 1. Instant local persistence (survives Render spin-downs & browser reboots)
+      saveLocalConfig(user.uid, merged);
 
-      // 2. Secondary: Sync to Firestore
-      try {
-        await setDoc(doc(db,'users',user.uid,'config','credentials'), merged, { merge: true });
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: user.email || '',
-          displayName: user.displayName || '',
-          configured: true,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
-        await setDoc(doc(db, 'sessions', user.uid), {
-          configured: true,
-          lastActive: serverTimestamp(),
-        }, { merge: true });
-      } catch (_) {}
+      // 2. Parallel sync to Backend DB and Firestore
+      await Promise.allSettled([
+        saveBackendConfig(API_BASE_URL, user.uid, merged),
+        saveFirestoreConfig(db, user.uid, merged),
+      ]);
 
       setConfig(merged);
-      toast.success('Credentials saved & active!');
+      toast.success('Credentials saved & verified!');
       setEditing(null);
       // Re-test this service after save
-      setTimeout(()=>runTest(defId, merged), 600);
-    } catch(e) {
+      setTimeout(() => runTest(defId, merged), 500);
+    } catch (e) {
       toast.error('Failed to save credentials.');
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

@@ -2,14 +2,20 @@ import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import {
+  getLocalConfig,
+  loadResilientConfig,
+  mergeConfigs,
+  saveLocalConfig
+} from '../data/configStorage';
 
 /**
- * Returns the saved credentials config from Firestore for the current user.
+ * Returns the saved credentials config from multi-tier resilient storage for the current user.
  * Shape: { jira, slack, llm: { provider, api_key }, groq (legacy), deploy, database, configured }
  * Derived booleans: jiraConnected, slackConnected, llmConnected, llmProvider
  */
 export function useCredentials() {
-  const [creds, setCreds]   = useState(null);
+  const [creds, setCreds]     = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,23 +26,33 @@ export function useCredentials() {
       if (unsubSnap) { unsubSnap(); unsubSnap = null; }
       if (!user) { setCreds(null); setLoading(false); return; }
 
-      // 1. Fetch from Database
-      fetch(`${API_BASE}/api/user-config?uid=${encodeURIComponent(user.uid)}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data && (data.configured || data.jira || data.slack || data.llm)) {
-            setCreds(prev => ({ ...data, ...(prev || {}) }));
-            setLoading(false);
-          }
-        })
-        .catch(() => {});
+      // 1. Instant local read so credentials never disappear on page refresh / Render restart
+      const local = getLocalConfig(user.uid);
+      if (local) {
+        setCreds(prev => mergeConfigs(prev || {}, local));
+        setLoading(false);
+      }
 
-      // 2. Also listen to Firestore
+      // 2. Multi-tier resilient load (auto-heals backend if wiped)
+      loadResilientConfig({ apiBase: API_BASE, uid: user.uid, db })
+        .then(resilient => {
+          if (resilient) {
+            setCreds(prev => mergeConfigs(prev || {}, resilient));
+          }
+          setLoading(false);
+        })
+        .catch(() => { setLoading(false); });
+
+      // 3. Listen to Firestore real-time updates
       const ref = doc(db, 'users', user.uid, 'config', 'credentials');
       unsubSnap = onSnapshot(ref,
         (snap) => {
           if (snap.exists() && snap.data()) {
-            setCreds(prev => ({ ...(prev || {}), ...snap.data() }));
+            setCreds(prev => {
+              const merged = mergeConfigs(prev || {}, snap.data());
+              saveLocalConfig(user.uid, merged);
+              return merged;
+            });
           }
           setLoading(false);
         },
@@ -44,7 +60,19 @@ export function useCredentials() {
       );
     });
 
-    return () => { unsubAuth(); if (unsubSnap) unsubSnap(); };
+    // 4. Listen to cross-component config updates
+    const handleConfigEvent = (e) => {
+      if (e.detail) {
+        setCreds(prev => mergeConfigs(prev || {}, e.detail));
+      }
+    };
+    window.addEventListener('arbiter_config_changed', handleConfigEvent);
+
+    return () => {
+      unsubAuth();
+      if (unsubSnap) unsubSnap();
+      window.removeEventListener('arbiter_config_changed', handleConfigEvent);
+    };
   }, []);
 
   const jiraConnected  = !!(creds?.jira?.site_url && creds?.jira?.email && creds?.jira?.api_token);

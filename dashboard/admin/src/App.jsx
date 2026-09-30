@@ -7,6 +7,7 @@ import LoginScreen        from './pages/LoginScreen';
 import OnboardingWizard   from './pages/OnboardingWizard';
 import Dashboard          from './pages/Dashboard';
 import { Toaster }        from 'react-hot-toast';
+import { getLocalConfig, isConfigured } from './data/configStorage';
 
 export default function App() {
   const { user, loading: authLoading, signIn, signOutUser } = useAuth();
@@ -56,6 +57,12 @@ export default function App() {
       if (!isMounted || configConfirmedRef.current) return;
       setConfigStatus('unconfigured');
     };
+
+    // 0. Instant LocalStorage check (survives Render restarts & sleeps)
+    const localCfg = getLocalConfig(user.uid);
+    if (localCfg && (isConfigured(localCfg) || localCfg.configured)) {
+      markConfigured();
+    }
 
     // 1. Backend DB — fastest source of truth
     fetch(`${API_BASE}/api/user-config?uid=${encodeURIComponent(user.uid)}`)
