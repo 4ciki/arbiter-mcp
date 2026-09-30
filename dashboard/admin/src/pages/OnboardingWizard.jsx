@@ -5,6 +5,13 @@ import { db } from '../firebase';
 import toast from 'react-hot-toast';
 import ArbiterLogo from '../components/ArbiterLogo';
 import { JiraLogo, SlackLogo, GroqLogo, GroqIcon, ClaudeLogo, RenderLogo, DatabaseLogo, ServiceBrandIcon } from '../components/BrandLogos';
+import {
+  getLocalConfig,
+  saveLocalConfig,
+  saveBackendConfig,
+  saveFirestoreConfig,
+  mergeConfigs
+} from '../data/configStorage';
 
 
 const API_BASE = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
@@ -296,7 +303,7 @@ function LLMStep({ provider, apiKey, onProviderChange, onKeyChange, testStatus, 
 
 export default function OnboardingWizard({ user, onComplete }) {
   const [step, setStep]     = useState(0);
-  const [creds, setCreds]   = useState(INIT);
+  const [creds, setCreds]   = useState(() => mergeConfigs(INIT, getLocalConfig(user?.uid) || {}));
   const [tests, setTests]   = useState({});
   const [testMsg, setTestMsg] = useState({});
   const [saving, setSaving] = useState(false);
@@ -323,44 +330,22 @@ export default function OnboardingWizard({ user, onComplete }) {
   async function finish() {
     setSaving(true);
     try {
-      const payload = {
-        ...creds,
+      const payload = mergeConfigs(creds, {
         configured: true,
         updatedAt: new Date().toISOString(),
-      };
+      });
 
-      // 1. Primary: Save to Database
-      try {
-        await fetch(`${API_BASE}/api/user-config`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid: user.uid, ...payload }),
-        });
-      } catch (err) {
-        console.warn('Backend DB save notice in wizard:', err);
-      }
+      // 1. Instant local persistence (survives Render restarts)
+      saveLocalConfig(user.uid, payload);
 
-      // 2. Secondary: Sync to Firestore
-      try {
-        await setDoc(doc(db, 'users', user.uid, 'config', 'credentials'), {
-          ...creds, configured: true, updatedAt: serverTimestamp(),
-        }, { merge: true });
-
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: user.email || '',
-          displayName: user.displayName || '',
-          configured: true,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
-        await setDoc(doc(db, 'sessions', user.uid), {
-          configured: true,
-          lastActive: serverTimestamp(),
-        }, { merge: true });
-      } catch (_) {}
+      // 2. Parallel sync to Backend and Firestore
+      await Promise.allSettled([
+        saveBackendConfig(API_BASE, user.uid, payload),
+        saveFirestoreConfig(db, user.uid, payload),
+      ]);
 
       toast.success('Configuration saved!');
-      onComplete(creds);
+      onComplete(payload);
     } catch {
       toast.error('Save failed — please try again.');
     } finally {
