@@ -230,9 +230,12 @@ export async function saveFirestoreConfig(db, uid, config) {
       configured: isConfigured(config) || config.configured || false,
       updatedAt: serverTimestamp(),
     };
-    await setDoc(doc(db, 'users', uid, 'config', 'credentials'), payload, { merge: true });
-    await setDoc(doc(db, 'users', uid), { configured: true, updatedAt: serverTimestamp() }, { merge: true });
-    await setDoc(doc(db, 'sessions', uid), { configured: true, lastActive: serverTimestamp() }, { merge: true });
+    // Run all 3 writes in parallel — avoids 3 sequential round-trips
+    await Promise.all([
+      setDoc(doc(db, 'users', uid, 'config', 'credentials'), payload, { merge: true }),
+      setDoc(doc(db, 'users', uid), { configured: true, updatedAt: serverTimestamp() }, { merge: true }),
+      setDoc(doc(db, 'sessions', uid), { configured: true, lastActive: serverTimestamp() }, { merge: true }),
+    ]);
     return true;
   } catch (err) {
     console.warn('[configStorage] Firestore save notice:', err);
@@ -303,7 +306,9 @@ export async function loadResilientConfig({ apiBase, uid, db }) {
 
   // Merge: supabase wins, then firestore, then backend, then local
   // Non-empty strings always beat empty strings
-  const combined = mergeConfigs(backend || {}, local || {}, firestore || {}, supabase || {});
+  // Only include backend data if it's actually configured (avoids pre-filling with server defaults)
+  const backendData = (backend && backend.configured) ? backend : {};
+  const combined = mergeConfigs(backendData, local || {}, firestore || {}, supabase || {});
 
   if (isConfigured(combined)) {
     // Keep local cache fresh
