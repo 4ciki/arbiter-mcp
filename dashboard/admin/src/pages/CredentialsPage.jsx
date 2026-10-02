@@ -16,6 +16,7 @@ import {
   getLocalConfig,
   saveLocalConfig,
   saveBackendConfig,
+  saveSupabaseConfig,
   saveFirestoreConfig,
   loadResilientConfig,
   mergeConfigs
@@ -322,23 +323,27 @@ export default function CredentialsPage({ user, onLog }) {
         updatedAt: new Date().toISOString()
       });
 
-      // 1. Instant local persistence
+      // 1. Instant local + UI update (user sees success immediately)
       saveLocalConfig(user.uid, merged);
+      setConfig(merged);
+      setEditing(null);
+      setSaving(false);
+      toast.success('Credentials saved!');
 
-      // 2. Parallel sync to Backend DB and Firestore
-      await Promise.allSettled([
+      // 2. Fire cloud sync in background — all 3 tiers in parallel
+      Promise.allSettled([
+        saveSupabaseConfig(user.uid, merged, user.email || ''),
         saveBackendConfig(API_BASE_URL, user.uid, merged, user.email || ''),
         saveFirestoreConfig(db, user.uid, merged),
-      ]);
+      ]).then(results => {
+        const anyFail = results.some(r => r.status === 'rejected' || r.value === false || r.value === null);
+        if (anyFail) toast('Synced locally. Cloud sync may retry.', { icon: '⚠️' });
+      });
 
-      setConfig(merged);
-      toast.success('Credentials saved & verified!');
-      setEditing(null);
-      // Re-test this service after save
-      setTimeout(() => runTest(defId, merged), 300);
+      // 3. Re-test this service
+      setTimeout(() => runTest(defId, merged), 400);
     } catch (e) {
       toast.error('Failed to save credentials.');
-    } finally {
       setSaving(false);
     }
   }
