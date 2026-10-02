@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { JiraLogo, SlackLogo, ServiceBrandIcon } from '../components/BrandLogos';
 import ArbiterLogo from '../components/ArbiterLogo';
-import { getStoredTickets, updateTicketStatus, calculateStats } from '../data/ticketData';
+import { getStoredTickets, updateTicketStatus, calculateStats, fetchSupabaseTickets } from '../data/ticketData';
 import { useCredentials } from '../hooks/useCredentials';
 
 const SEVERITY_CONFIG = {
@@ -47,15 +47,28 @@ export default function TicketsPage({ onNavigate }) {
     async function loadTickets() {
       try {
         setLoading(true);
+        // 1. Fetch from Supabase Cloud PostgreSQL JSONB
+        const cloudTickets = await fetchSupabaseTickets();
+        if (mounted && Array.isArray(cloudTickets) && cloudTickets.length > 0) {
+          setTickets(cloudTickets);
+        }
+        // 2. Also check backend API
         const res = await fetch('/api/tickets?limit=100');
         if (res.ok) {
           const data = await res.json();
-          if (mounted && Array.isArray(data)) {
-            setTickets(data);
+          if (mounted && Array.isArray(data) && data.length > 0) {
+            setTickets(prev => {
+              const map = new Map();
+              [...data, ...prev].forEach(t => {
+                const id = t.id || t.ticket_id;
+                if (id && !map.has(id)) map.set(id, t);
+              });
+              return Array.from(map.values());
+            });
           }
         }
       } catch (err) {
-        console.warn('Backend tickets fetch error:', err);
+        console.warn('Tickets fetch error:', err);
       } finally {
         if (mounted) setLoading(false);
       }

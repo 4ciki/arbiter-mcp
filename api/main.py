@@ -28,6 +28,7 @@ from slack_sdk.signature import SignatureVerifier
 from agent.graph import get_default_graph, resume_graph, run_graph
 from config import settings
 from db.repository import ArbiterRepository
+from db.supabase_client import supabase_store
 from schemas import Ticket
 
 log = logging.getLogger(__name__)
@@ -66,13 +67,26 @@ def create_app(
         app.state.retriever = None
 
     # ── User Credentials & Configuration Storage (Database Persistence) ─────────
+    # ── User Credentials & Configuration Storage (Supabase Cloud + Local Persistence) ─
     @app.get("/api/user-config")
     async def get_user_config_endpoint(uid: str):
-        """Fetch saved credentials config for a user from the database or server env defaults."""
+        """Fetch saved credentials config for a user from Supabase Cloud, local DB, or server env defaults."""
         if not uid:
             raise HTTPException(status_code=400, detail="Missing uid")
+
+        # 1. Primary: Cloud-persistent Supabase Store (persists across Render container restarts)
+        sb_cfg = supabase_store.get_user_config(uid)
+        if sb_cfg and sb_cfg.get("configured"):
+            return sb_cfg
+
+        # 2. Secondary: Local database repository
         cfg = app.state.repo.get_user_config(uid)
         if cfg and cfg.get("configured"):
+            # Auto-heal: re-sync to Supabase in background
+            try:
+                supabase_store.save_user_config(uid, cfg)
+            except Exception:
+                pass
             return cfg
 
         # Fallback to server environment defaults if present
@@ -82,7 +96,7 @@ def create_app(
             settings.GROQ_API_KEY or
             settings.ANTHROPIC_API_KEY
         )
-        if not has_env_creds and not cfg:
+        if not has_env_creds and not cfg and not sb_cfg:
             return {
                 "configured": False,
                 "deploy": {
@@ -122,11 +136,13 @@ def create_app(
             }
         if cfg:
             env_cfg.update(cfg)
+        if sb_cfg:
+            env_cfg.update(sb_cfg)
         return env_cfg
 
     @app.post("/api/user-config")
     async def save_user_config_endpoint(request: Request):
-        """Save or update user credentials config in the database."""
+        """Save or update user credentials config dynamically in Supabase and local DB."""
         try:
             body = await request.json()
         except Exception:
@@ -136,10 +152,20 @@ def create_app(
         if not uid:
             raise HTTPException(status_code=400, detail="Missing uid")
 
-        config = {k: v for k, v in body.items() if k != "uid"}
+        email = body.get("email", "")
+        config = {k: v for k, v in body.items() if k not in ("uid", "email")}
         config["configured"] = True
+
+        # 1. Save to local SQLite/Postgres repository
         saved = app.state.repo.save_user_config(uid, config)
-        return {"ok": True, "config": saved}
+
+        # 2. Save to Supabase Cloud unstructured JSONB table
+        try:
+            supabase_store.save_user_config(uid, config, email=email)
+        except Exception as exc:
+            log.warning("Could not sync user config to Supabase: %s", exc)
+
+        return {"ok": True, "config": saved, "storage": "supabase+local"}
 
     # ── Credential proxy — avoids CORS issues in browser-based dashboards ──────
     @app.post("/api/test-credential")
