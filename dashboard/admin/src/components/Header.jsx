@@ -1,5 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  RefreshCw, Bell, ChevronDown, ChevronUp,
+  User, Settings, LogOut, Loader2,
+} from 'lucide-react';
 import ArbiterLogo from './ArbiterLogo';
 
 function StatusDot({ label, status = 'online' }) {
@@ -49,6 +53,12 @@ export default function Header({ user, signOut }) {
     await signOut();
   };
 
+  const iconBtn = {
+    width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'transparent', border: '1px solid transparent',
+    borderRadius: 9, cursor: 'pointer', color: '#94A3B8', transition: 'all 0.14s',
+  };
+
   return (
     <header style={{
       height: 58, flexShrink: 0,
@@ -60,7 +70,7 @@ export default function Header({ user, signOut }) {
       position: 'relative', zIndex: 200,
       gap: 16,
     }}>
-      {/* Brand — hidden on wide screens since Sidebar has it, but kept for context */}
+      {/* Brand */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 8 }}>
         <ArbiterLogo size={28} animate="gyro" />
         <div>
@@ -93,30 +103,21 @@ export default function Header({ user, signOut }) {
         <button
           onClick={() => location.reload()}
           title="Refresh"
-          style={{
-            width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'transparent', border: '1px solid transparent',
-            borderRadius: 9, cursor: 'pointer', color: '#94A3B8', transition: 'all 0.14s',
-          }}
+          style={iconBtn}
           onMouseEnter={e => { e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.borderColor='#E2E8F0'; e.currentTarget.style.color='#475569'; }}
           onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='transparent'; e.currentTarget.style.color='#94A3B8'; }}
         >
-          <span className="mso sm">refresh</span>
+          <RefreshCw size={16} />
         </button>
 
         {/* Notification bell */}
         <button
           title="Notifications"
-          style={{
-            width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'transparent', border: '1px solid transparent',
-            borderRadius: 9, cursor: 'pointer', color: '#94A3B8', transition: 'all 0.14s',
-            position: 'relative',
-          }}
+          style={{ ...iconBtn, position: 'relative' }}
           onMouseEnter={e => { e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.borderColor='#E2E8F0'; e.currentTarget.style.color='#475569'; }}
           onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='transparent'; e.currentTarget.style.color='#94A3B8'; }}
         >
-          <span className="mso sm">notifications</span>
+          <Bell size={16} />
           <span style={{
             position: 'absolute', top: 6, right: 6,
             width: 7, height: 7, borderRadius: '50%',
@@ -162,9 +163,7 @@ export default function Header({ user, signOut }) {
             }}>
               {user.displayName?.split(' ')[0] || user.email}
             </span>
-            <span className="mso sm" style={{ color: '#94A3B8', fontSize: 15 }}>
-              {menuOpen ? 'expand_less' : 'expand_more'}
-            </span>
+            {menuOpen ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
           </button>
 
           <AnimatePresence>
@@ -194,8 +193,8 @@ export default function Header({ user, signOut }) {
 
                 {/* Menu items */}
                 {[
-                  { icon: 'person', label: 'Profile', action: null },
-                  { icon: 'settings', label: 'Preferences', action: null },
+                  { Icon: User,     label: 'Profile',     action: null },
+                  { Icon: Settings, label: 'Preferences', action: null },
                 ].map(item => (
                   <button key={item.label} style={{
                     width: '100%', display: 'flex', alignItems: 'center', gap: 9,
@@ -206,7 +205,7 @@ export default function Header({ user, signOut }) {
                   onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
                   onMouseLeave={e => e.currentTarget.style.background='transparent'}
                   >
-                    <span className="mso sm" style={{ color: '#94A3B8' }}>{item.icon}</span>
+                    <item.Icon size={15} color="#94A3B8" />
                     {item.label}
                   </button>
                 ))}
@@ -227,9 +226,10 @@ export default function Header({ user, signOut }) {
                   onMouseEnter={e => { if (!signingOut) e.currentTarget.style.background='#FEF2F2'; }}
                   onMouseLeave={e => e.currentTarget.style.background='transparent'}
                 >
-                  <span className="mso sm" style={{ color: '#DC2626' }}>
-                    {signingOut ? 'hourglass_empty' : 'logout'}
-                  </span>
+                  {signingOut
+                    ? <Loader2 size={15} color="#DC2626" style={{ animation: 'spin 0.9s linear infinite' }} />
+                    : <LogOut size={15} color="#DC2626" />
+                  }
                   {signingOut ? 'Signing out…' : 'Sign Out'}
                 </button>
               </motion.div>

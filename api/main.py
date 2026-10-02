@@ -89,56 +89,17 @@ def create_app(
                 pass
             return cfg
 
-        # Fallback to server environment defaults if present
-        has_env_creds = bool(
-            (settings.JIRA_SITE_URL and settings.JIRA_API_TOKEN) or
-            settings.SLACK_BOT_TOKEN or
-            settings.GROQ_API_KEY or
-            settings.ANTHROPIC_API_KEY
-        )
-        if not has_env_creds and not cfg and not sb_cfg:
-            return {
-                "configured": False,
-                "deploy": {
-                    "deploy_url": "https://arbiter-mcp.onrender.com",
-                },
-                "database": {
-                    "database_url": settings.DATABASE_URL or "sqlite:///./arbiter.db",
-                },
-            }
-
-        env_cfg = {
+        # If user has no saved config in Supabase or repo, return unconfigured state.
+        # DO NOT fall back to server env credentials to prevent leaking data across accounts.
+        return {
+            "configured": False,
             "deploy": {
                 "deploy_url": "https://arbiter-mcp.onrender.com",
             },
             "database": {
                 "database_url": settings.DATABASE_URL or "sqlite:///./arbiter.db",
             },
-            "configured": has_env_creds,
         }
-        if settings.JIRA_SITE_URL or settings.JIRA_API_TOKEN:
-            env_cfg["jira"] = {
-                "site_url": settings.JIRA_SITE_URL or "",
-                "email": settings.JIRA_EMAIL or "",
-                "api_token": settings.JIRA_API_TOKEN or "",
-            }
-        if settings.SLACK_BOT_TOKEN:
-            env_cfg["slack"] = {
-                "bot_token": settings.SLACK_BOT_TOKEN or "",
-                "signing_secret": settings.SLACK_SIGNING_SECRET or "",
-                "channel": settings.SLACK_CHANNEL or "#general",
-            }
-        llm_key = settings.ANTHROPIC_API_KEY if settings.LLM_PROVIDER == "claude" else (settings.GROQ_API_KEY or "")
-        if llm_key:
-            env_cfg["llm"] = {
-                "provider": settings.LLM_PROVIDER or ("claude" if settings.ANTHROPIC_API_KEY else "groq"),
-                "api_key": llm_key,
-            }
-        if cfg:
-            env_cfg.update(cfg)
-        if sb_cfg:
-            env_cfg.update(sb_cfg)
-        return env_cfg
 
     @app.post("/api/user-config")
     async def save_user_config_endpoint(request: Request):

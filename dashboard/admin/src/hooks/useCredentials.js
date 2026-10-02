@@ -24,12 +24,13 @@ export function useCredentials() {
 
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (unsubSnap) { unsubSnap(); unsubSnap = null; }
-      if (!user) { setCreds(null); setLoading(false); return; }
+      setCreds(null);
+      if (!user) { setLoading(false); return; }
 
       // 1. Instant local read so credentials never disappear on page refresh / Render restart
       const local = getLocalConfig(user.uid);
       if (local) {
-        setCreds(prev => mergeConfigs(prev || {}, local));
+        setCreds(local);
         setLoading(false);
       }
 
