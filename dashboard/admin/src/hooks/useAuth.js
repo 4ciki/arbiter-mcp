@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut
+} from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../firebase';
 
@@ -8,7 +14,14 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Safety: check for redirect result if returning from redirect auth
+    getRedirectResult(auth).catch(() => {});
+
+    // Safety: never keep loading=true for more than 8s
+    const authTimeout = setTimeout(() => setLoading(false), 8000);
+
     const unsub = onAuthStateChanged(auth, async (u) => {
+      clearTimeout(authTimeout);
       setUser(u);
       setLoading(false);
       if (u) {
@@ -24,10 +37,20 @@ export function useAuth() {
         } catch (_) {}
       }
     });
-    return unsub;
+    return () => { clearTimeout(authTimeout); unsub(); };
   }, []);
 
-  const signIn = () => signInWithPopup(auth, googleProvider);
+  const signIn = async () => {
+    try {
+      return await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      // If popup was blocked or closed unexpectedly, fall back to redirect
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+        return await signInWithRedirect(auth, googleProvider);
+      }
+      throw err;
+    }
+  };
 
   const signOutUser = async () => {
     if (auth.currentUser) {

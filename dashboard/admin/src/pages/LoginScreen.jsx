@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Loader2, Zap, TrendingUp } from 'lucide-react';
 import ArbiterLogo from '../components/ArbiterLogo';
 import { JiraLogo, SlackLogo } from '../components/BrandLogos';
 
@@ -16,8 +17,24 @@ export default function LoginScreen({ signIn }) {
 
   const handle = async () => {
     setBusy(true); setErr('');
-    try { await signIn(); }
-    catch (e) { setBusy(false); setErr(ERR[e.code] || 'Authentication failed — please try again.'); }
+    // Safety: reset after 12s no matter what (popup closed without firing error)
+    const timer = setTimeout(() => {
+      setBusy(false);
+    }, 12000);
+    try {
+      await signIn();
+      clearTimeout(timer);
+      setBusy(false);
+    } catch (e) {
+      clearTimeout(timer);
+      setBusy(false);
+      if (e?.code === 'auth/popup-closed-by-user') {
+        // User voluntarily dismissed popup
+        setErr('Sign-in cancelled. Please click below to try again.');
+      } else {
+        setErr(ERR[e?.code] || e?.message || 'Authentication failed — please try again.');
+      }
+    }
   };
 
   return (
@@ -64,10 +81,10 @@ export default function LoginScreen({ signIn }) {
           {/* Feature pills */}
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             {[
-              { label:'AI Triage', icon:'bolt', color:'#D97706' },
-              { label:'Jira Integration', logo:<JiraLogo size={14} /> },
-              { label:'Slack Notifications', logo:<SlackLogo size={14} /> },
-              { label:'Real-time Analytics', icon:'trending_up', color:'#2563EB' },
+              { label:'AI Triage',          lucide:<Zap size={13} color="#D97706" /> },
+              { label:'Jira Integration',    lucide:<JiraLogo size={13} /> },
+              { label:'Slack Notifications', lucide:<SlackLogo size={13} /> },
+              { label:'Real-time Analytics', lucide:<TrendingUp size={13} color="#2563EB" /> },
             ].map(f => (
               <span key={f.label} style={{
                 display:'inline-flex',alignItems:'center',gap:6,
@@ -76,7 +93,7 @@ export default function LoginScreen({ signIn }) {
                 boxShadow:'0 1px 3px rgba(15,23,42,0.04)',
                 fontFamily:"'Plus Jakarta Sans',sans-serif",
               }}>
-                {f.logo || <span className="mso sm" style={{fontSize:14,color:f.color}}>{f.icon}</span>}
+                {f.lucide}
                 {f.label}
               </span>
             ))}
@@ -121,7 +138,7 @@ export default function LoginScreen({ signIn }) {
             onMouseLeave={e => { e.currentTarget.style.borderColor='#E4E9F2'; e.currentTarget.style.boxShadow='0 2px 8px rgba(15,23,42,0.06),inset 0 1px 0 rgba(255,255,255,0.9)'; }}
           >
             {busy
-              ? <span className="mso animate-spin" style={{fontSize:18,color:'#4F46E5'}}>progress_activity</span>
+              ? <Loader2 size={18} color="#4F46E5" style={{animation:'spin 0.9s linear infinite'}} />
               : <GoogleIcon />
             }
             {busy ? 'Authenticating…' : 'Continue with Google'}

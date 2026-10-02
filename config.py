@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = "https://pcahkrfscpmyzvsnkaix.supabase.co"
     SUPABASE_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjYWhrcmZzY3BteXp2c25rYWl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MDI1NDMsImV4cCI6MjEwNjQ3ODU0M30.8eJI7w4zekvlw-xHaqAD1TpSq92ret_ltJc6ZF6GlOw"
 
+    # ── MongoDB (Dynamic Unstructured Data Layer) ──────────────────────────────
+    MONGODB_URI: str = "mongodb+srv://4cikisolutions_db_user:4ciki@2026@growth.angyixt.mongodb.net/?appName=Growth"
+    MONGODB_DATABASE: str = "arbiter"
+
     # ── Trust scoring thresholds ───────────────────────────────────────────────
     TRUST_THRESHOLD: float = 0.75
     COLD_START_SUCCESS_RATE: float = 0.3

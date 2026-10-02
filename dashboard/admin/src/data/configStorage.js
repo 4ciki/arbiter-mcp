@@ -4,17 +4,18 @@
  *
  * Tiers:
  * 1. Supabase Cloud Database (PostgreSQL JSONB — persistent, multi-user, unstructured)
- * 2. LocalStorage (Instant, persistent across browser sessions and Render container restarts)
- * 3. Backend Database (REST API: /api/user-config)
+ * 2. LocalStorage (Instant, scoped strictly to user.uid — NO global fallback)
+ * 3. Backend Database (REST API: /api/user-config, always keyed by uid)
  * 4. Firebase Firestore (Cloud sync: users/{uid}/config/credentials)
  *
- * Critical Rule:
- * An empty string ("") or empty object from an ephemeral backend restart
- * must NEVER overwrite a previously saved, valid credential.
+ * SECURITY RULE: Config is ALWAYS keyed by user.uid.
+ * There is NO global fallback. Each user sees only their own data.
+ * When a new user signs in they start fresh → Onboarding Wizard.
  */
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-const STORAGE_PREFIX = 'arbiter_config_v1_';
+// Versioned prefix — bump if schema changes need a clean slate
+const STORAGE_PREFIX = 'arbiter_cfg_v2_';
 
 export const SUPABASE_URL = 'https://pcahkrfscpmyzvsnkaix.supabase.co';
 export const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjYWhrcmZzY3BteXp2c25rYWl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MDI1NDMsImV4cCI6MjEwNjQ3ODU0M30.8eJI7w4zekvlw-xHaqAD1TpSq92ret_ltJc6ZF6GlOw';
@@ -35,8 +36,8 @@ export function mergeConfigs(...configs) {
       if (typeof val === 'object' && !Array.isArray(val)) {
         result[key] = mergeConfigs(result[key] || {}, val);
       } else if (typeof val === 'string') {
-        // Only overwrite if the new string is non-empty, OR if the existing value doesn't exist
-        if (val.trim() !== '' || !result[key]) {
+        // Only overwrite if the new string is non-empty
+        if (val.trim() !== '' || result[key] === undefined) {
           result[key] = val;
         }
       } else if (typeof val === 'boolean') {
@@ -47,16 +48,14 @@ export function mergeConfigs(...configs) {
     }
   }
 
-  // Ensure 'configured' flag matches actual credential presence
+  // Ensure 'configured' flag reflects actual credential presence
   const hasCreds = Boolean(
     (result.jira?.site_url && result.jira?.api_token) ||
     result.slack?.bot_token ||
     result.llm?.api_key ||
     result.groq?.api_key
   );
-  if (hasCreds) {
-    result.configured = true;
-  }
+  if (hasCreds) result.configured = true;
 
   return result;
 }
@@ -75,24 +74,25 @@ export function isConfigured(cfg) {
 }
 
 /**
- * Get config from localStorage for a specific user.
+ * Build the storage key for a user — MUST have a uid.
+ * Throws if uid is missing to catch programming mistakes early.
+ */
+function storageKey(uid) {
+  if (!uid) throw new Error('[configStorage] uid is required — never use global config');
+  return `${STORAGE_PREFIX}${uid}`;
+}
+
+/**
+ * Get config from localStorage — strictly scoped to the uid.
+ * Returns null if the user has no saved config (→ show Onboarding).
  */
 export function getLocalConfig(uid) {
-  if (typeof window === 'undefined' || !window.localStorage) return null;
+  if (!uid || typeof window === 'undefined' || !window.localStorage) return null;
   try {
-    const key = `${STORAGE_PREFIX}${uid || 'global'}`;
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(storageKey(uid));
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') return parsed;
-    }
-    // Fallback: check global key if specific user key not found
-    if (uid) {
-      const globalRaw = localStorage.getItem(`${STORAGE_PREFIX}global`);
-      if (globalRaw) {
-        const parsed = JSON.parse(globalRaw);
-        if (parsed && typeof parsed === 'object') return parsed;
-      }
     }
   } catch (err) {
     console.warn('[configStorage] Failed to read from localStorage:', err);
@@ -101,22 +101,45 @@ export function getLocalConfig(uid) {
 }
 
 /**
- * Save config to localStorage for a specific user.
+ * Save config to localStorage — strictly scoped to the uid.
+ * NEVER writes to a global/shared key.
  */
 export function saveLocalConfig(uid, config) {
-  if (typeof window === 'undefined' || !window.localStorage || !config) return;
+  if (!uid || typeof window === 'undefined' || !window.localStorage || !config) return;
   try {
-    const merged = mergeConfigs(getLocalConfig(uid) || {}, config);
-    const key = `${STORAGE_PREFIX}${uid || 'global'}`;
-    localStorage.setItem(key, JSON.stringify(merged));
-    // Also save to global key for resilience
-    localStorage.setItem(`${STORAGE_PREFIX}global`, JSON.stringify(merged));
+    const existing = getLocalConfig(uid) || {};
+    const merged = mergeConfigs(existing, config);
+    localStorage.setItem(storageKey(uid), JSON.stringify(merged));
 
-    // Dispatch event so other components update immediately
+    // Notify other components on this page
     window.dispatchEvent(new CustomEvent('arbiter_config_changed', { detail: merged }));
   } catch (err) {
     console.warn('[configStorage] Failed to save to localStorage:', err);
   }
+}
+
+/**
+ * Wipe localStorage config for a specific user on sign-out.
+ * Does NOT touch other users' keys.
+ */
+export function clearLocalConfig(uid) {
+  if (!uid || typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    localStorage.removeItem(storageKey(uid));
+  } catch (_) {}
+}
+
+/**
+ * Clean up legacy global/shared keys from localStorage.
+ * Strictly NEVER copies shared data into new user accounts.
+ */
+export function cleanupOldGlobalConfig() {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    localStorage.removeItem('arbiter_config_v1_global');
+    localStorage.removeItem('arbiter_cfg_global');
+    localStorage.removeItem('arbiter_config_global');
+  } catch (_) {}
 }
 
 /**
@@ -125,12 +148,15 @@ export function saveLocalConfig(uid, config) {
 export async function getSupabaseConfig(uid) {
   if (!uid) return null;
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/user_configs?uid=eq.${encodeURIComponent(uid)}&select=config_json`, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-      },
-    });
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/user_configs?uid=eq.${encodeURIComponent(uid)}&select=config_json`,
+      {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+        },
+      }
+    );
     if (res.ok) {
       const rows = await res.json();
       if (Array.isArray(rows) && rows.length > 0) {
@@ -216,12 +242,13 @@ export async function saveFirestoreConfig(db, uid, config) {
 
 /**
  * Save config across all tiers simultaneously.
+ * Always requires a uid — no anonymous saves.
  */
 export async function saveAllConfigTiers({ uid, config, email = '', apiBase = '', db = null }) {
   if (!uid || !config) return;
   const merged = mergeConfigs(getLocalConfig(uid) || {}, config, { configured: true });
 
-  // 1. Instant local persistence
+  // 1. Instant local persistence (uid-scoped only)
   saveLocalConfig(uid, merged);
 
   // 2. Parallel cloud persistence (Supabase, Backend, Firestore)
@@ -235,12 +262,18 @@ export async function saveAllConfigTiers({ uid, config, email = '', apiBase = ''
 }
 
 /**
- * Load combined config across all sources with auto-heal.
- * Primary source of truth: Supabase PostgreSQL (unstructured JSONB).
- * If LocalStorage/Supabase has credentials but Backend DB lost them due to Render restart,
- * this function automatically re-seeds the Backend DB!
+ * Load combined config for a specific user across all sources.
+ * Returns null if no config exists anywhere → show Onboarding.
+ *
+ * Priority: Supabase > Firestore > Backend > LocalStorage
+ * Auto-heals backend if wiped by Render restart.
  */
 export async function loadResilientConfig({ apiBase, uid, db }) {
+  if (!uid) return null; // Never load without a uid
+
+  // Clean up any legacy shared keys
+  cleanupOldGlobalConfig();
+
   const local = getLocalConfig(uid);
   let supabase = null;
   let backend = null;
@@ -248,42 +281,32 @@ export async function loadResilientConfig({ apiBase, uid, db }) {
 
   const base = (apiBase || '').replace(/\/$/, '');
 
-  // Fetch Supabase, Backend DB, and Firestore in parallel
-  const promises = [];
+  // Fetch all sources in parallel
+  await Promise.all([
+    getSupabaseConfig(uid)
+      .then(data => { supabase = data; })
+      .catch(err => console.warn('[configStorage] Supabase load notice:', err)),
 
-  if (uid) {
-    promises.push(
-      getSupabaseConfig(uid)
-        .then(data => { supabase = data; })
-        .catch(err => console.warn('[configStorage] Supabase load notice:', err))
-    );
-  }
+    base
+      ? fetch(`${base}/api/user-config?uid=${encodeURIComponent(uid)}`)
+          .then(r => r.json())
+          .then(data => { backend = data; })
+          .catch(err => console.warn('[configStorage] Backend load notice:', err))
+      : Promise.resolve(),
 
-  if (base && uid) {
-    promises.push(
-      fetch(`${base}/api/user-config?uid=${encodeURIComponent(uid)}`)
-        .then(r => r.json())
-        .then(data => { backend = data; })
-        .catch(err => console.warn('[configStorage] Backend load notice:', err))
-    );
-  }
+    db
+      ? getDoc(doc(db, 'users', uid, 'config', 'credentials'))
+          .then(snap => { if (snap.exists()) firestore = snap.data(); })
+          .catch(err => console.warn('[configStorage] Firestore load notice:', err))
+      : Promise.resolve(),
+  ]);
 
-  if (db && uid) {
-    promises.push(
-      getDoc(doc(db, 'users', uid, 'config', 'credentials'))
-        .then(snap => { if (snap.exists()) firestore = snap.data(); })
-        .catch(err => console.warn('[configStorage] Firestore load notice:', err))
-    );
-  }
+  // Merge: supabase wins, then firestore, then backend, then local
+  // Non-empty strings always beat empty strings
+  const combined = mergeConfigs(backend || {}, local || {}, firestore || {}, supabase || {});
 
-  await Promise.all(promises);
-
-  // Merge order: backend < firestore < supabase < local
-  // Non-empty values always win over blank values
-  const combined = mergeConfigs(backend || {}, firestore || {}, supabase || {}, local || {});
-
-  // Update local storage with the best combined state
   if (isConfigured(combined)) {
+    // Keep local cache fresh
     saveLocalConfig(uid, combined);
 
     // Auto-heal Supabase if empty
@@ -291,13 +314,17 @@ export async function loadResilientConfig({ apiBase, uid, db }) {
       saveSupabaseConfig(uid, combined);
     }
 
-    // Auto-heal Backend if empty (e.g. Render restart)
-    const backendIsWiped = !backend || (!backend.configured && !backend.jira?.api_token && !backend.llm?.api_key && !backend.slack?.bot_token);
-    if (backendIsWiped && base && uid) {
-      console.log('[configStorage] Auto-healing backend database from persistent Supabase cache...');
+    // Auto-heal Backend if wiped by Render restart
+    const backendWiped = !backend ||
+      (!backend.configured && !backend.jira?.api_token && !backend.llm?.api_key && !backend.slack?.bot_token);
+    if (backendWiped && base) {
+      console.log('[configStorage] Auto-healing backend from Supabase cache...');
       saveBackendConfig(base, uid, combined);
     }
+
+    return combined;
   }
 
-  return combined;
+  // No valid credentials found anywhere for this user → null → Onboarding
+  return null;
 }
