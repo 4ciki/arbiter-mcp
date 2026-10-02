@@ -4,7 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts';
-import { calculateStats } from '../data/ticketData';
+import { calculateStats, fetchSupabaseTickets } from '../data/ticketData';
 import { JiraLogo, SlackLogo } from '../components/BrandLogos';
 import { useCredentials } from '../hooks/useCredentials';
 
@@ -14,18 +14,22 @@ export default function OverviewPage({ onNavigate }) {
   const [monthlyVolume, setMonthlyVolume] = useState(1500);
   const { jiraConnected, slackConnected } = useCredentials();
 
-  // Fetch live metrics and tickets directly from SQLite database
+  // Fetch live metrics and tickets directly from Supabase Cloud + backend
   useEffect(() => {
     let mounted = true;
     async function loadData() {
       try {
+        const cloudTickets = await fetchSupabaseTickets();
+        if (mounted && Array.isArray(cloudTickets) && cloudTickets.length > 0) {
+          setTickets(cloudTickets);
+        }
         const [ticketsRes, metricsRes] = await Promise.all([
           fetch('/api/tickets?limit=100'),
           fetch('/api/metrics')
         ]);
         if (ticketsRes.ok) {
           const tData = await ticketsRes.json();
-          if (mounted && Array.isArray(tData)) setTickets(tData);
+          if (mounted && Array.isArray(tData) && tData.length > 0) setTickets(tData);
         }
         if (metricsRes.ok) {
           const mData = await metricsRes.json();
