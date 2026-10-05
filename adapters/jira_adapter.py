@@ -35,7 +35,7 @@ from typing import Any
 
 import httpx2
 from mcp import ClientSession
-from mcp.client.streamable_http import streamable_http_client
+from mcp.client.streamable_http import streamablehttp_client as streamable_http_client
 
 from adapters.base import TicketSource
 from config import settings

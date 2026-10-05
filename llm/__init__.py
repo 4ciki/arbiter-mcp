@@ -14,13 +14,19 @@ Public surface:
     RoutedLLMClient    — production client: fast backend for classify,
                          strong backend for summarize_for_human
     GroqLlamaClient    — Groq-hosted open-weight backend
-    VertexAIClient     — Google Cloud Vertex AI backend
+    VertexAIClient     — Google Cloud Vertex AI backend (lazy import)
 """
 
 from .base import LLMClient, ClassificationResult, SummaryResult
 from .router import RoutedLLMClient
 from .groq_client import GroqLlamaClient
-from .vertex_client import VertexAIClient
+
+# Lazy import — only load VertexAIClient if google-cloud-aiplatform is installed.
+# This prevents import errors when running locally without the GCP SDK.
+try:
+    from .vertex_client import VertexAIClient
+except ImportError:
+    VertexAIClient = None  # type: ignore[assignment,misc]
 
 __all__ = [
     "LLMClient",
