@@ -36,63 +36,69 @@ export function SlackLogo({ size = 20, style = {}, className = '' }) {
 }
 
 /**
- * Groq official logo — orange lightning bolt + rounded "groq" wordmark geometry.
- * Brand color: #F55036 (Groq orange-red)
+ * Groq official logo — uses the real groq-logo.webp asset.
+ * Falls back to a styled img with object-fit contain.
  */
 export function GroqLogo({ size = 20, style = {}, className = '' }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 20" fill="none" xmlns="http://www.w3.org/2000/svg"
-      style={{ display:'inline-block', verticalAlign:'middle', flexShrink:0, ...style }} className={className} aria-label="Groq">
-      {/* Lightning bolt */}
-      <path d="M7 1L2 10.5H6.2L4 19L11 8H6.8L9.5 1H7Z" fill="#F55036"/>
-      {/* "groq" letterform approximation using paths */}
-      {/* g */}
-      <path d="M17 6.5a4 4 0 1 0 0 8 4 4 0 0 0 0-5.5v2.5a1.5 1.5 0 1 1-1.5 1.5H14a4 4 0 0 0 3 3.9v1.6c0 .8-.7 1.5-1.5 1.5H14" stroke="#F55036" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
-      {/* r */}
-      <path d="M24 7v7.5m0-5.5c.8-1.2 2-2 3-2" stroke="#F55036" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
-      {/* o */}
-      <circle cx="31" cy="11" r="3.5" stroke="#F55036" strokeWidth="1.6" fill="none"/>
-      {/* q */}
-      <circle cx="38.5" cy="11" r="3.5" stroke="#F55036" strokeWidth="1.6" fill="none"/>
-      <path d="M42 13.5v3.5" stroke="#F55036" strokeWidth="1.6" strokeLinecap="round"/>
-    </svg>
+    <img
+      src="/groq-logo.webp"
+      alt="Groq"
+      width={size * 3}
+      height={size}
+      className={className}
+      style={{
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        flexShrink: 0,
+        objectFit: 'contain',
+        ...style,
+      }}
+    />
   );
 }
 
 /**
- * Groq icon-only variant (square, for small spaces like cards)
+ * Groq icon-only variant — square crop of the real logo.
  */
 export function GroqIcon({ size = 20, style = {}, className = '' }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"
-      style={{ display:'inline-block', verticalAlign:'middle', flexShrink:0, ...style }} className={className} aria-label="Groq">
-      <rect width="32" height="32" rx="8" fill="#1A1A1A"/>
-      {/* Groq "G" open arc with stub */}
-      <path d="M23 13A8 8 0 1 0 18 22H23v-4.5H18.5" stroke="#F55036" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-    </svg>
+    <img
+      src="/groq-logo.webp"
+      alt="Groq"
+      width={size}
+      height={size}
+      className={className}
+      style={{
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        flexShrink: 0,
+        objectFit: 'contain',
+        ...style,
+      }}
+    />
   );
 }
 
 /**
- * Claude / Anthropic official logo — the distinctive multi-spoke sunburst asterisk.
- * Brand color: #D4785A (Anthropic terracotta)
+ * Claude / Anthropic official logo — uses the real claude-logo.webp asset.
  */
 export function ClaudeLogo({ size = 20, style = {}, className = '' }) {
-  // 10-spoke asterisk matching the official Claude app icon
-  const spokes = Array.from({ length: 10 }, (_, i) => i * 36);
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"
-      style={{ display:'inline-block', verticalAlign:'middle', flexShrink:0, ...style }} className={className} aria-label="Claude">
-      <rect width="32" height="32" rx="8" fill="#FFFFFF"/>
-      <g transform="translate(16,16)">
-        {spokes.map((deg, i) => (
-          <rect key={i} x="-2" y="-10" width="4" height="9" rx="2"
-            fill="#D4785A"
-            transform={`rotate(${deg})`}
-          />
-        ))}
-      </g>
-    </svg>
+    <img
+      src="/claude-logo.webp"
+      alt="Claude"
+      width={size}
+      height={size}
+      className={className}
+      style={{
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        flexShrink: 0,
+        objectFit: 'contain',
+        ...style,
+      }}
+    />
   );
 }
 
