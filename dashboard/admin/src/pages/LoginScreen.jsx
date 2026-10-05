@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useSpring } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useSpring, useInView } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import ArbiterLogo from '../components/ArbiterLogo';
 import { JiraLogo, SlackLogo, GroqIcon, ClaudeLogo } from '../components/BrandLogos';
@@ -105,10 +105,23 @@ const FEATURES = [
 ];
 
 const HOW_IT_WORKS = [
-  { step: '01', icon: 'task_alt',  title: 'Ticket Created in Jira', body: 'Your team raises a support ticket in Jira Service Management as usual — no workflow changes required.' },
-  { step: '02', icon: 'webhook',   title: 'Webhook Fires Instantly', body: "Arbiter's webhook endpoint receives the event in real time and queues it for AI analysis." },
-  { step: '03', icon: 'smart_toy', title: 'AI Agent Triages',        body: 'The LangGraph agent analyses severity, category, affected systems, and SLA risk using your chosen LLM.' },
-  { step: '04', icon: 'send',      title: 'Slack Alert Dispatched',  body: 'A rich Slack notification lands in the right channel with full context, links, and AI-recommended next steps.' },
+  { step: '01', icon: 'confirmation_number', color: '#1ABC9C', title: 'Ticket Created in Jira',    body: 'Your team raises a support ticket in Jira Service Management as usual — zero workflow changes required.', detail: 'Any Jira project · Any issue type' },
+  { step: '02', icon: 'bolt',                color: '#F39C12', title: 'Webhook Fires Instantly',   body: "Arbiter's webhook endpoint receives the event in real-time, within milliseconds of creation or update.",   detail: 'Sub-50ms delivery · Retry on failure' },
+  { step: '03', icon: 'psychology',          color: '#1ABC9C', title: 'AI Agent Triages',          body: 'The LangGraph agent weighs similarity to solved cases, category success rate, and model confidence to decide.', detail: 'Groq + Claude LLM ensemble' },
+  { step: '04', icon: 'call_split',          color: '#F39C12', title: 'Route: Auto or Human',      body: 'Routine & safe tickets are resolved automatically. Uncertain or risky ones escalate to your team instantly.',   detail: 'Trust-score threshold · Always auditable' },
+  { step: '05', icon: 'send',                color: '#1ABC9C', title: 'Slack Alert Dispatched',    body: 'A rich Slack notification lands in the right channel with severity, AI-suggested reply, and Jira deep-links.',  detail: 'Context-rich · Actionable' },
+];
+
+const PAIN_POINTS = [
+  { icon: 'lock',     label: 'Password reset',   type: 'routine' },
+  { icon: 'wifi_off', label: 'Wi-Fi issue',       type: 'routine' },
+  { icon: 'print',    label: 'Printer problem',   type: 'routine' },
+  { icon: 'warning',  label: 'Server down!',      type: 'urgent'  },
+  { icon: 'lock',     label: 'VPN access',        type: 'routine' },
+  { icon: 'email',    label: 'Email bounce',      type: 'routine' },
+  { icon: 'devices',  label: 'Hardware fault',    type: 'routine' },
+  { icon: 'priority_high', label: 'Data breach?', type: 'urgent'  },
+  { icon: 'lock',     label: 'Account locked',    type: 'routine' },
 ];
 
 const STATS = [
@@ -160,8 +173,18 @@ export default function LoginScreen({ signIn }) {
         @keyframes glow-pulse { 0%,100% { box-shadow:0 0 20px rgba(26,188,156,0.3),0 0 60px rgba(26,188,156,0.1); } 50% { box-shadow:0 0 40px rgba(26,188,156,0.5),0 0 100px rgba(26,188,156,0.2); } }
         @keyframes float-y { 0%,100% { transform:translateY(0px); } 50% { transform:translateY(-10px); } }
         @keyframes grid-pulse { 0%,100% { opacity:0.04; } 50% { opacity:0.09; } }
+        @keyframes ticket-fall { 0%{transform:translateY(-60px) rotate(-8deg);opacity:0;} 40%{opacity:1;} 100%{transform:translateY(0) rotate(var(--r));opacity:1;} }
+        @keyframes scan-line { 0%{transform:translateY(-100%);} 100%{transform:translateY(400%);} }
+        @keyframes path-flow { 0%{stroke-dashoffset:300;} 100%{stroke-dashoffset:0;} }
+        @keyframes spin-slow { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+        @keyframes pulse-ring { 0%{transform:scale(1);opacity:0.6;} 100%{transform:scale(1.8);opacity:0;} }
+        @keyframes data-stream { 0%{transform:translateX(-100%);opacity:0;} 20%{opacity:1;} 80%{opacity:1;} 100%{transform:translateX(100%);opacity:0;} }
         .shimmer-text { background:linear-gradient(90deg,#1ABC9C,#F39C12,#1ABC9C); background-size:200% auto; -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; animation:shimmer 3s linear infinite; }
         .glow-btn { animation:glow-pulse 3s ease-in-out infinite; }
+        .step-connector { position:absolute; left:35px; top:64px; width:2px; bottom:0; background:linear-gradient(to bottom,rgba(26,188,156,0.4),rgba(243,156,18,0.15)); }
+        .ticket-card { border-radius:10px; background:rgba(15,30,26,0.9); border:1px solid rgba(26,188,156,0.18); padding:10px 14px; display:flex; align-items:center; gap:8px; backdrop-filter:blur(8px); }
+        .urgent-ticket { border-color:rgba(243,156,18,0.5); background:rgba(40,25,5,0.9); }
+        @keyframes wiggle { 0%,100%{transform:rotate(-1deg);} 50%{transform:rotate(1deg);} }
       `}</style>
 
       {/* ── Navbar ── */}
@@ -302,30 +325,301 @@ export default function LoginScreen({ signIn }) {
         </div>
       </section>
 
+      {/* ── WHY ARBITER ── */}
+      <section style={{ padding: '100px 40px', position: 'relative', overflow: 'hidden', borderTop: '1px solid rgba(26,188,156,0.06)' }}>
+        {/* subtle bg radial */}
+        <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 80% 50% at 50% 60%,rgba(26,188,156,0.04) 0%,transparent 70%)', pointerEvents:'none' }} />
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <SectionLabel icon="psychology_alt">The Problem</SectionLabel>
+          <SectionTitle>Every day, the same tickets pile up.</SectionTitle>
+          <SectionSub>Most are routine. A few are urgent. Without AI, your team can&apos;t tell which is which — until it&apos;s too late.</SectionSub>
+
+          {/* ── ANIMATED STAGE ── */}
+          <div style={{ marginTop: 64, display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 32, alignItems: 'center', minHeight: 480 }}>
+
+            {/* LEFT: ticket pile */}
+            <div style={{ position: 'relative', height: 420 }}>
+              <motion.div initial={{ opacity:0, x:-40 }} whileInView={{ opacity:1, x:0 }} viewport={{ once:true }} transition={{ duration:0.6 }}
+                style={{ position:'absolute', top:0, left:0, right:0, bottom:0 }}>
+                {/* pile label */}
+                <div style={{ position:'absolute', top:0, left:0, zIndex:10 }}>
+                  <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#64748B', marginBottom:4 }}>Incoming tickets</div>
+                  <div style={{ fontSize:12, color:'#475569' }}>Every 10 minutes. Same overload.</div>
+                </div>
+                {/* stacked ticket cards */}
+                {PAIN_POINTS.map((t, i) => (
+                  <motion.div key={i}
+                    initial={{ opacity:0, y:-80, rotate: (i%3===0?-6:i%3===1?3:-2) }}
+                    whileInView={{ opacity:1, y:0, rotate:(i%3===0?-6:i%3===1?3:-2) }}
+                    viewport={{ once:true }}
+                    transition={{ delay: 0.1 + i*0.08, type:'spring', stiffness:140, damping:16 }}
+                    whileHover={{ scale:1.04, zIndex:20 }}
+                    style={{
+                      position:'absolute',
+                      left: `${8 + (i%3)*8}%`,
+                      top: `${70 + Math.floor(i/3)*72}px`,
+                      zIndex: PAIN_POINTS.length - i,
+                      cursor:'default',
+                    }}>
+                    <div className={`ticket-card${t.type==='urgent'?' urgent-ticket':''}`}
+                      style={{ minWidth:160, boxShadow: t.type==='urgent'
+                        ? '0 4px 24px rgba(243,156,18,0.25)'
+                        : '0 4px 16px rgba(0,0,0,0.4)' }}>
+                      <span className="mso" style={{ fontSize:15,
+                        color: t.type==='urgent' ? '#F39C12' : '#1ABC9C' }}>{t.icon}</span>
+                      <span style={{ fontSize:12, fontWeight:600,
+                        color: t.type==='urgent' ? '#FBBF24' : '#94A3B8',
+                        fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{t.label}</span>
+                      {t.type==='urgent' && (
+                        <motion.span animate={{ opacity:[1,0.3,1] }} transition={{ duration:0.9, repeat:Infinity }}
+                          className="mso" style={{ fontSize:13, color:'#F59E0B', marginLeft:'auto' }}>priority_high</motion.span>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+                {/* frustrated dev */}
+                <motion.div initial={{ opacity:0 }} whileInView={{ opacity:1 }} viewport={{ once:true }} transition={{ delay:1 }}
+                  style={{ position:'absolute', bottom:8, right:0, padding:'10px 16px',
+                    borderRadius:12, background:'rgba(15,25,22,0.9)', border:'1px solid rgba(240,253,249,0.08)',
+                    fontSize:12, color:'#64748B', fontFamily:"'Plus Jakarta Sans',sans-serif", display:'flex', alignItems:'center', gap:8 }}>
+                  <motion.span className="mso" style={{ fontSize:18, color:'#F39C12' }}
+                    animate={{ rotate:[-5,5,-5] }} transition={{ duration:1.8, repeat:Infinity }}>sentiment_dissatisfied</motion.span>
+                  <span>Same tickets.<br/>Every. Day.</span>
+                </motion.div>
+              </motion.div>
+            </div>
+
+            {/* CENTRE: Arbiter hub */}
+            <motion.div initial={{ opacity:0, scale:0.6 }} whileInView={{ opacity:1, scale:1 }}
+              viewport={{ once:true }} transition={{ delay:0.5, type:'spring', stiffness:120, damping:14 }}
+              style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, position:'relative', zIndex:5 }}>
+              {/* pulsing ring */}
+              <div style={{ position:'relative', width:88, height:88 }}>
+                {[0,1,2].map(j => (
+                  <motion.div key={j} style={{ position:'absolute', inset:-j*12, borderRadius:'50%',
+                    border:'1px solid rgba(26,188,156,0.3)', pointerEvents:'none' }}
+                    animate={{ opacity:[0.6,0,0.6], scale:[1,1.25,1] }}
+                    transition={{ duration:2.4, repeat:Infinity, delay:j*0.7 }} />
+                ))}
+                <div style={{ width:88, height:88, borderRadius:'50%',
+                  background:'linear-gradient(135deg,rgba(26,188,156,0.15),rgba(243,156,18,0.08))',
+                  border:'2px solid rgba(26,188,156,0.4)', display:'flex', alignItems:'center', justifyContent:'center',
+                  boxShadow:'0 0 40px rgba(26,188,156,0.3)' }}>
+                  <ArbiterLogo size={44} animate="gyro" />
+                </div>
+              </div>
+              {/* scan beam */}
+              <div style={{ width:2, height:60, background:'linear-gradient(to bottom,rgba(26,188,156,0.5),transparent)', position:'relative', overflow:'hidden' }}>
+                <motion.div animate={{ y:['-100%','200%'] }} transition={{ duration:1.5, repeat:Infinity, ease:'linear' }}
+                  style={{ position:'absolute', width:'100%', height:'40%', background:`linear-gradient(to bottom,transparent,${T},transparent)` }} />
+              </div>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontSize:13, fontWeight:800, color:'#E2F8F3', fontFamily:"'Plus Jakarta Sans',sans-serif", letterSpacing:'-0.02em' }}>Arbiter</div>
+                <div style={{ fontSize:10, color:T, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', marginTop:2 }}>reads every ticket</div>
+              </div>
+              {/* capability chips */}
+              {[['search','Understands context'],['layers','Classifies & ranks'],['bolt','Prepares next steps']].map(([ic,lab]) => (
+                <motion.div key={ic} whileInView={{ opacity:1, x:0 }} initial={{ opacity:0, x:20 }} viewport={{ once:true }}
+                  transition={{ delay: 0.9 }}
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:999,
+                    background:'rgba(26,188,156,0.07)', border:'1px solid rgba(26,188,156,0.15)',
+                    fontSize:11, fontWeight:600, color:T, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+                  <span className="mso" style={{ fontSize:13 }}>{ic}</span>{lab}
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* RIGHT: sorted output + dual path */}
+            <div style={{ position:'relative', height:420 }}>
+              <motion.div initial={{ opacity:0, x:40 }} whileInView={{ opacity:1, x:0 }} viewport={{ once:true }} transition={{ delay:0.6, duration:0.6 }}
+                style={{ position:'absolute', top:0, left:0, right:0, bottom:0 }}>
+                {/* triage complete label */}
+                <div style={{ position:'absolute', top:0, right:0, textAlign:'right', zIndex:10 }}>
+                  <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:T, marginBottom:4 }}>Triage complete</div>
+                  <div style={{ fontSize:12, color:'#475569' }}>Clear, prioritised queue</div>
+                </div>
+                {/* sorted list */}
+                {[
+                  { label:'Server down!',   badge:'Critical',  color:'#EF4444' },
+                  { label:'Data breach?',   badge:'High',      color:'#F59E0B' },
+                  { label:'VPN access',     badge:'Medium',    color:'#1ABC9C' },
+                  { label:'Password reset', badge:'Low',       color:'#64748B' },
+                  { label:'Wi-Fi issue',    badge:'Low',       color:'#64748B' },
+                ].map((row,i) => (
+                  <motion.div key={i}
+                    initial={{ opacity:0, x:40 }} whileInView={{ opacity:1, x:0 }} viewport={{ once:true }}
+                    transition={{ delay: 0.8 + i*0.1, type:'spring', stiffness:140, damping:16 }}
+                    style={{ position:'absolute', left:0, right:0, top: `${68 + i*64}px` }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px',
+                      borderRadius:10, background:'rgba(15,30,26,0.9)',
+                      border:`1px solid ${i===0?'rgba(239,68,68,0.4)':i===1?'rgba(245,158,11,0.3)':'rgba(26,188,156,0.12)'}`,
+                      boxShadow: i===0?'0 4px 20px rgba(239,68,68,0.15)':'none' }}>
+                      <motion.span style={{ width:8, height:8, borderRadius:'50%', background:row.color, flexShrink:0, display:'inline-block',
+                        boxShadow:`0 0 6px ${row.color}` }}
+                        animate={{ opacity: i<2?[1,0.4,1]:1 }} transition={{ duration:1.2, repeat:Infinity }} />
+                      <span style={{ flex:1, fontSize:12, fontWeight:600, color:'#CBD5E1', fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{row.label}</span>
+                      <span style={{ fontSize:10, fontWeight:700, color:row.color, padding:'2px 8px',
+                        borderRadius:999, background:`${row.color}18`, letterSpacing:'0.06em' }}>{row.badge}</span>
+                    </div>
+                  </motion.div>
+                ))}
+                {/* bottom badge */}
+                <motion.div initial={{ opacity:0 }} whileInView={{ opacity:1 }} viewport={{ once:true }} transition={{ delay:1.4 }}
+                  style={{ position:'absolute', bottom:8, left:0, right:0, padding:'10px 16px',
+                    borderRadius:12, background:'rgba(26,188,156,0.08)', border:'1px solid rgba(26,188,156,0.2)',
+                    display:'flex', alignItems:'center', gap:8 }}>
+                  <span className="mso" style={{ fontSize:17, color:T }}>trending_up</span>
+                  <div style={{ fontSize:12, color:'#94A3B8', fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+                    Less noise. More focus. <span style={{ color:T, fontWeight:700 }}>A more efficient IT team.</span>
+                  </div>
+                </motion.div>
+              </motion.div>
+            </div>
+          </div>
+
+          {/* ── DUAL PATH EXPLAINER ── */}
+          <motion.div initial={{ opacity:0, y:40 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} transition={{ delay:0.3, duration:0.7 }}
+            style={{ marginTop:80, display:'grid', gridTemplateColumns:'1fr auto 1fr', gap:24, alignItems:'stretch' }}>
+            {/* Auto path */}
+            <div style={{ padding:'28px 24px', borderRadius:16,
+              background:'linear-gradient(135deg,rgba(26,188,156,0.06),rgba(26,188,156,0.02))',
+              border:'1px solid rgba(26,188,156,0.18)', position:'relative', overflow:'hidden' }}>
+              <motion.div style={{ position:'absolute', inset:0, background:'radial-gradient(circle at top left,rgba(26,188,156,0.08),transparent 60%)', pointerEvents:'none' }} />
+              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:'rgba(26,188,156,0.12)',
+                  border:'1px solid rgba(26,188,156,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <span className="mso" style={{ fontSize:18, color:T }}>check_circle</span>
+                </div>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:800, color:'#E2F8F3', fontFamily:"'Plus Jakarta Sans',sans-serif" }}>Routine &amp; safe</div>
+                  <div style={{ fontSize:11, color:T, fontWeight:600 }}>Handled instantly by Arbiter</div>
+                </div>
+              </div>
+              <p style={{ fontSize:13, color:'#64748B', lineHeight:1.7, marginBottom:16 }}>Password resets, Wi-Fi issues, standard access requests — resolved automatically with zero human intervention.</p>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {['Fast','Consistent','Reliable'].map(tag => (
+                  <span key={tag} style={{ fontSize:10, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase',
+                    padding:'3px 10px', borderRadius:999, background:'rgba(26,188,156,0.1)', color:T, border:'1px solid rgba(26,188,156,0.2)' }}>{tag}</span>
+                ))}
+              </div>
+            </div>
+            {/* Centre divider */}
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8 }}>
+              <div style={{ width:1, flex:1, background:'linear-gradient(to bottom,transparent,rgba(26,188,156,0.2),rgba(243,156,18,0.2),transparent)' }} />
+              <div style={{ width:32, height:32, borderRadius:'50%',
+                background:'rgba(15,25,22,0.95)', border:'1px solid rgba(240,253,249,0.1)',
+                display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span className="mso" style={{ fontSize:14, color:'#475569' }}>call_split</span>
+              </div>
+              <div style={{ width:1, flex:1, background:'linear-gradient(to bottom,transparent,rgba(243,156,18,0.2),rgba(243,156,18,0.2),transparent)' }} />
+            </div>
+            {/* Human path */}
+            <div style={{ padding:'28px 24px', borderRadius:16,
+              background:'linear-gradient(135deg,rgba(243,156,18,0.06),rgba(243,156,18,0.02))',
+              border:'1px solid rgba(243,156,18,0.18)', position:'relative', overflow:'hidden' }}>
+              <motion.div style={{ position:'absolute', inset:0, background:'radial-gradient(circle at top right,rgba(243,156,18,0.07),transparent 60%)', pointerEvents:'none' }} />
+              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:'rgba(243,156,18,0.1)',
+                  border:'1px solid rgba(243,156,18,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <span className="mso" style={{ fontSize:18, color:A }}>person_raised_hand</span>
+                </div>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:800, color:'#E2F8F3', fontFamily:"'Plus Jakarta Sans',sans-serif" }}>Uncertain or risky</div>
+                  <div style={{ fontSize:11, color:A, fontWeight:600 }}>Human decides — always</div>
+                </div>
+              </div>
+              <p style={{ fontSize:13, color:'#64748B', lineHeight:1.7, marginBottom:16 }}>Anything smelling like real risk — security events, data access, high-impact changes — routes to your team immediately, no exceptions.</p>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {['Safe','Auditable','Transparent'].map(tag => (
+                  <span key={tag} style={{ fontSize:10, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase',
+                    padding:'3px 10px', borderRadius:999, background:'rgba(243,156,18,0.08)', color:A, border:'1px solid rgba(243,156,18,0.2)' }}>{tag}</span>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* ── HOW IT WORKS ── */}
-      <section id="how-it-works" style={{ padding: '100px 40px', background: 'rgba(26,188,156,0.02)', borderTop: '1px solid rgba(26,188,156,0.06)', borderBottom: '1px solid rgba(26,188,156,0.06)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: 0, left: '50%', width: 1, height: '100%', background: 'linear-gradient(to bottom,transparent,rgba(26,188,156,0.08),transparent)', pointerEvents: 'none' }} />
-        <div style={{ maxWidth: 840, margin: '0 auto' }}>
+      <section id="how-it-works" style={{ padding:'100px 40px', background:'rgba(26,188,156,0.02)', borderTop:'1px solid rgba(26,188,156,0.06)', borderBottom:'1px solid rgba(26,188,156,0.06)', position:'relative', overflow:'hidden' }}>
+        <div style={{ maxWidth:960, margin:'0 auto' }}>
           <SectionLabel icon="schema">Workflow</SectionLabel>
           <SectionTitle>From ticket to action in seconds</SectionTitle>
-          <SectionSub>A zero-friction pipeline that requires no changes to your existing Jira setup.</SectionSub>
-          <div style={{ marginTop: 64, display: 'flex', flexDirection: 'column' }}>
+          <SectionSub>A zero-friction pipeline. No changes to your Jira setup. No new tools to learn.</SectionSub>
+
+          <div style={{ marginTop:72, display:'flex', flexDirection:'column', gap:0, position:'relative' }}>
             {HOW_IT_WORKS.map((step, i) => (
-              <motion.div key={step.step} initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.12, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                style={{ display: 'flex', gap: 28, paddingBottom: i === HOW_IT_WORKS.length - 1 ? 0 : 48, position: 'relative' }}>
+              <motion.div key={step.step}
+                initial={{ opacity:0, x: i%2===0 ? -50 : 50 }}
+                whileInView={{ opacity:1, x:0 }}
+                viewport={{ once:true }}
+                transition={{ delay: i*0.13, duration:0.65, ease:[0.22,1,0.36,1] }}
+                style={{ display:'flex', gap:0, paddingBottom: i === HOW_IT_WORKS.length-1 ? 0 : 0, position:'relative' }}>
+
+                {/* Vertical connector */}
                 {i < HOW_IT_WORKS.length - 1 && (
-                  <div style={{ position: 'absolute', left: 22, top: 52, width: 2, bottom: 0, background: 'linear-gradient(to bottom,rgba(26,188,156,0.3),rgba(243,156,18,0.1))' }}>
-                    <motion.div animate={{ y: ['-100%', '100%'] }} transition={{ duration: 2, repeat: Infinity, ease: 'linear', delay: i * 0.5 }}
-                      style={{ position: 'absolute', width: '100%', height: '30%', background: `linear-gradient(to bottom,transparent,${T},transparent)` }} />
+                  <div style={{
+                    position:'absolute', left:34, top:70, width:2, height:80,
+                    background:`linear-gradient(to bottom,${step.color},${HOW_IT_WORKS[i+1].color}22)`,
+                    zIndex:1,
+                  }}>
+                    <motion.div
+                      animate={{ y:['-100%','120%'] }}
+                      transition={{ duration:1.8, repeat:Infinity, ease:'linear', delay: i*0.4 }}
+                      style={{ position:'absolute', width:'100%', height:'35%',
+                        background:`linear-gradient(to bottom,transparent,${step.color},transparent)` }} />
                   </div>
                 )}
-                <div style={{ width: 46, height: 46, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: i % 2 === 0 ? 'rgba(26,188,156,0.1)' : 'rgba(243,156,18,0.1)', border: `1.5px solid ${i % 2 === 0 ? 'rgba(26,188,156,0.3)' : 'rgba(243,156,18,0.3)'}`, position: 'relative', zIndex: 2 }}>
-                  <span className="mso" style={{ fontSize: 20, color: i % 2 === 0 ? T : A }}>{step.icon}</span>
-                </div>
-                <div style={{ flex: 1, paddingTop: 10 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: i % 2 === 0 ? T : A, marginBottom: 6, fontFamily: "'JetBrains Mono',monospace" }}>{step.step}</div>
-                  <h3 style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 17, fontWeight: 800, color: '#E2F8F3', marginBottom: 8, letterSpacing: '-0.02em' }}>{step.title}</h3>
-                  <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.7, maxWidth: 560 }}>{step.body}</p>
+
+                <div style={{ display:'flex', gap:28, flex:1, paddingBottom: i < HOW_IT_WORKS.length-1 ? 80 : 0 }}>
+                  {/* Step node */}
+                  <div style={{ position:'relative', flexShrink:0 }}>
+                    <motion.div
+                      whileInView={{ scale:[0.7,1.15,1] }}
+                      viewport={{ once:true }}
+                      transition={{ delay: i*0.13+0.1, duration:0.5, type:'spring' }}
+                      style={{ width:70, height:70, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
+                        background:`radial-gradient(circle,${step.color}22 0%,${step.color}08 100%)`,
+                        border:`2px solid ${step.color}55`, position:'relative', zIndex:2 }}>
+                      {/* pulse ring */}
+                      <motion.div
+                        animate={{ scale:[1,1.6], opacity:[0.5,0] }}
+                        transition={{ duration:2, repeat:Infinity, delay: i*0.3 }}
+                        style={{ position:'absolute', inset:0, borderRadius:'50%', border:`1px solid ${step.color}`, pointerEvents:'none' }} />
+                      <span className="mso" style={{ fontSize:26, color:step.color }}>{step.icon}</span>
+                    </motion.div>
+                    {/* step number badge */}
+                    <div style={{ position:'absolute', top:-4, right:-4, width:20, height:20, borderRadius:'50%',
+                      background:step.color, display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:9, fontWeight:900, color:'#060D0B', fontFamily:"'JetBrains Mono',monospace", zIndex:3 }}>
+                      {i+1}
+                    </div>
+                  </div>
+
+                  {/* Content card */}
+                  <motion.div
+                    whileHover={{ y:-3, boxShadow:`0 12px 40px ${step.color}18` }}
+                    style={{ flex:1, padding:'20px 24px', borderRadius:14,
+                      background:'rgba(240,253,249,0.025)', border:`1px solid ${step.color}22`,
+                      backdropFilter:'blur(8px)', transition:'all 0.2s', cursor:'default', overflow:'hidden', position:'relative' }}>
+                    {/* animated data stream behind card */}
+                    <motion.div
+                      animate={{ x:['-110%','110%'] }}
+                      transition={{ duration:3.5, repeat:Infinity, ease:'linear', delay: i*0.7 }}
+                      style={{ position:'absolute', top:0, left:0, right:0, height:'100%',
+                        background:`linear-gradient(90deg,transparent,${step.color}06,transparent)`,
+                        pointerEvents:'none' }} />
+                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase',
+                      color:step.color, marginBottom:6, fontFamily:"'JetBrains Mono',monospace" }}>STEP {step.step}</div>
+                    <h3 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:16, fontWeight:800,
+                      color:'#E2F8F3', marginBottom:8, letterSpacing:'-0.02em' }}>{step.title}</h3>
+                    <p style={{ fontSize:13.5, color:'#64748B', lineHeight:1.7, marginBottom:10 }}>{step.body}</p>
+                    <div style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:999,
+                      background:`${step.color}10`, border:`1px solid ${step.color}25` }}>
+                      <span className="mso" style={{ fontSize:11, color:step.color }}>fiber_manual_record</span>
+                      <span style={{ fontSize:11, color:step.color, fontWeight:600, fontFamily:"'JetBrains Mono',monospace" }}>{step.detail}</span>
+                    </div>
+                  </motion.div>
                 </div>
               </motion.div>
             ))}
@@ -334,23 +628,32 @@ export default function LoginScreen({ signIn }) {
       </section>
 
       {/* ── INTEGRATIONS ── */}
-      <section style={{ padding: '100px 40px' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', textAlign: 'center' }}>
+      <section style={{ padding:'100px 40px' }}>
+        <div style={{ maxWidth:1040, margin:'0 auto', textAlign:'center' }}>
           <SectionLabel icon="hub">Integrations</SectionLabel>
           <SectionTitle>The tools you already use</SectionTitle>
           <SectionSub>Arbiter slots into your existing stack. No migration, no new tools to learn.</SectionSub>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 60, flexWrap: 'wrap' }}>
+          <div style={{ display:'flex', justifyContent:'center', alignItems:'stretch', gap:20, marginTop:56, flexWrap:'wrap' }}>
             {[
-              { icon: <JiraLogo size={36} />,  name: 'Jira Service Management', role: 'Ticket source and sync'     },
-              { icon: <SlackLogo size={36} />, name: 'Slack',                   role: 'Alert and notification layer'},
-              { icon: <GroqIcon size={28} />,  name: 'Groq',                    role: 'Ultra-fast LLM inference'   },
-              { icon: <ClaudeLogo size={28} theme="dark" />,name: 'Claude',      role: 'Advanced AI reasoning'      },
+              { icon: <JiraLogo size={34} />,  name:'Jira Service Management', role:'Ticket source and sync',      color:'rgba(38,132,255,0.15)' },
+              { icon: <SlackLogo size={34} />, name:'Slack',                   role:'Alert and notification layer', color:'rgba(224,33,138,0.1)'  },
+              { icon: <GroqIcon size={26} />,  name:'Groq',                    role:'Ultra-fast LLM inference',    color:'rgba(245,80,54,0.1)'   },
+              { icon: <ClaudeLogo size={26} theme="dark" />, name:'Claude',     role:'Advanced AI reasoning',       color:'rgba(217,119,87,0.1)'  },
             ].map((int, i) => (
-              <motion.div key={int.name} initial={{ opacity: 0, scale: 0.85 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }} whileHover={{ y: -6, scale: 1.02 }}>
-                <TiltCard style={{ padding: '28px 32px', borderRadius: 16, textAlign: 'center', background: 'rgba(240,253,249,0.03)', border: '1px solid rgba(240,253,249,0.08)', backdropFilter: 'blur(12px)', width: 200, cursor: 'default' }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 44, marginBottom: 16 }}>{int.icon}</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#F0FDF9', marginBottom: 4, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{int.name}</div>
-                  <div style={{ fontSize: 11, color: '#64748B', lineHeight: 1.5 }}>{int.role}</div>
+              <motion.div key={int.name}
+                initial={{ opacity:0, y:30 }}
+                whileInView={{ opacity:1, y:0 }}
+                viewport={{ once:true }}
+                transition={{ delay: i*0.1, type:'spring', stiffness:200 }}
+                whileHover={{ y:-6, scale:1.03 }}
+                style={{ flex:'1 1 200px', maxWidth:220 }}>
+                <TiltCard style={{ padding:'28px 20px', borderRadius:16, textAlign:'center',
+                  background: int.color, border:'1px solid rgba(240,253,249,0.08)',
+                  backdropFilter:'blur(12px)', cursor:'default', height:'100%' }}>
+                  <div style={{ display:'flex', justifyContent:'center', alignItems:'center', height:48, marginBottom:14 }}>{int.icon}</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#F0FDF9', marginBottom:5,
+                    fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1.3 }}>{int.name}</div>
+                  <div style={{ fontSize:11.5, color:'#64748B', lineHeight:1.5 }}>{int.role}</div>
                 </TiltCard>
               </motion.div>
             ))}
