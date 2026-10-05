@@ -126,7 +126,7 @@ function EditForm({ defId, draft, onDraftChange }) {
                   color: active ? (p === 'groq' ? '#C0341D' : '#7C5535') : '#64748B', transition: 'all 0.15s',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 }}>
-                {p === 'groq' ? <GroqIcon size={16} /> : <ClaudeLogo size={16} />}
+                {p === 'groq' ? <GroqIcon size={16} /> : <ClaudeLogo size={16} theme="light" iconOnly />}
                 {p === 'groq' ? 'Groq' : 'Claude'}
               </button>
             );
@@ -446,7 +446,7 @@ export default function CredentialsPage({ user, onLog }) {
                   }}>
                     {def.id === 'llm' ? (
                       (config?.llm?.provider || 'groq') === 'claude'
-                        ? <ClaudeLogo size={22} />
+                        ? <ClaudeLogo size={22} theme="light" iconOnly />
                         : <GroqIcon size={22} />
                     ) : (
                       <ServiceBrandIcon type={def.type} size={22} />

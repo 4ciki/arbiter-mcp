@@ -36,21 +36,22 @@ export function SlackLogo({ size = 20, style = {}, className = '' }) {
 }
 
 /**
- * Groq official logo — uses the real groq-logo.webp asset.
- * Falls back to a styled img with object-fit contain.
+ * Groq official logo — uses authentic transparent groq-logo asset.
  */
 export function GroqLogo({ size = 20, style = {}, className = '' }) {
   return (
     <img
-      src="/groq-logo.webp"
+      src="/groq-logo.webp?v=2"
       alt="Groq"
-      width={size * 3}
       height={size}
       className={className}
       style={{
         display: 'inline-block',
         verticalAlign: 'middle',
         flexShrink: 0,
+        height: size,
+        width: 'auto',
+        maxHeight: size,
         objectFit: 'contain',
         ...style,
       }}
@@ -59,20 +60,22 @@ export function GroqLogo({ size = 20, style = {}, className = '' }) {
 }
 
 /**
- * Groq icon-only variant — square crop of the real logo.
+ * Groq icon variant — clean transparent brand mark.
  */
 export function GroqIcon({ size = 20, style = {}, className = '' }) {
   return (
     <img
-      src="/groq-logo.webp"
+      src="/groq-logo.webp?v=2"
       alt="Groq"
-      width={size}
       height={size}
       className={className}
       style={{
         display: 'inline-block',
         verticalAlign: 'middle',
         flexShrink: 0,
+        height: size,
+        width: 'auto',
+        maxHeight: size,
         objectFit: 'contain',
         ...style,
       }}
@@ -81,20 +84,28 @@ export function GroqIcon({ size = 20, style = {}, className = '' }) {
 }
 
 /**
- * Claude / Anthropic official logo — uses the real claude-logo.webp asset.
+ * Claude / Anthropic official logo — uses transparent claude-logo asset.
+ * Supports theme='dark' (white text) and theme='light' (charcoal text),
+ * and iconOnly={true} for the iconic Anthropic starburst mark.
  */
-export function ClaudeLogo({ size = 20, style = {}, className = '' }) {
+export function ClaudeLogo({ size = 20, theme = 'dark', iconOnly = false, style = {}, className = '' }) {
+  const src = iconOnly
+    ? '/claude-icon.webp?v=2'
+    : (theme === 'dark' ? '/claude-logo-white.webp?v=2' : '/claude-logo.webp?v=2');
+
   return (
     <img
-      src="/claude-logo.webp"
+      src={src}
       alt="Claude"
-      width={size}
       height={size}
       className={className}
       style={{
         display: 'inline-block',
         verticalAlign: 'middle',
         flexShrink: 0,
+        height: size,
+        width: 'auto',
+        maxHeight: size,
         objectFit: 'contain',
         ...style,
       }}

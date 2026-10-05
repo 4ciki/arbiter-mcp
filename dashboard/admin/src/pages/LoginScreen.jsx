@@ -248,7 +248,7 @@ export default function LoginScreen({ signIn }) {
             {/* Integrations */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.85, duration: 0.6 }} style={{ marginTop: 52, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Integrates with</span>
-              {[{ icon: <JiraLogo size={14} />, label: 'Jira' }, { icon: <SlackLogo size={14} />, label: 'Slack' }, { icon: <GroqIcon size={14} />, label: 'Groq' }, { icon: <ClaudeLogo size={14} />, label: 'Claude' }, { icon: <span className="mso" style={{ fontSize: 13, color: '#6366F1' }}>database</span>, label: 'Supabase' }].map(p => (
+              {[{ icon: <JiraLogo size={14} />, label: 'Jira' }, { icon: <SlackLogo size={14} />, label: 'Slack' }, { icon: <GroqIcon size={14} />, label: 'Groq' }, { icon: <ClaudeLogo size={14} theme="dark" iconOnly />, label: 'Claude' }, { icon: <span className="mso" style={{ fontSize: 13, color: '#6366F1' }}>database</span>, label: 'Supabase' }].map(p => (
                 <div key={p.label} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 13px', borderRadius: 999, background: 'rgba(240,253,249,0.04)', border: '1px solid rgba(240,253,249,0.08)', fontSize: 12, fontWeight: 600, color: '#94A3B8', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                   {p.icon}{p.label}
                 </div>
@@ -343,12 +343,12 @@ export default function LoginScreen({ signIn }) {
             {[
               { icon: <JiraLogo size={36} />,  name: 'Jira Service Management', role: 'Ticket source and sync'     },
               { icon: <SlackLogo size={36} />, name: 'Slack',                   role: 'Alert and notification layer'},
-              { icon: <GroqIcon size={36} />,  name: 'Groq',                    role: 'Ultra-fast LLM inference'   },
-              { icon: <ClaudeLogo size={36} />,name: 'Claude',                  role: 'Advanced AI reasoning'      },
+              { icon: <GroqIcon size={28} />,  name: 'Groq',                    role: 'Ultra-fast LLM inference'   },
+              { icon: <ClaudeLogo size={28} theme="dark" />,name: 'Claude',      role: 'Advanced AI reasoning'      },
             ].map((int, i) => (
               <motion.div key={int.name} initial={{ opacity: 0, scale: 0.85 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }} whileHover={{ y: -6, scale: 1.02 }}>
                 <TiltCard style={{ padding: '28px 32px', borderRadius: 16, textAlign: 'center', background: 'rgba(240,253,249,0.03)', border: '1px solid rgba(240,253,249,0.08)', backdropFilter: 'blur(12px)', width: 200, cursor: 'default' }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>{int.icon}</div>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 44, marginBottom: 16 }}>{int.icon}</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#F0FDF9', marginBottom: 4, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{int.name}</div>
                   <div style={{ fontSize: 11, color: '#64748B', lineHeight: 1.5 }}>{int.role}</div>
                 </TiltCard>

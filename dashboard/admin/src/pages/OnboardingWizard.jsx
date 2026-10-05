@@ -235,7 +235,7 @@ function LLMStep({ provider, apiKey, onProviderChange, onKeyChange, testStatus, 
           onClick={()=>onProviderChange('claude')}>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
             <div style={{width:36,height:36,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <ClaudeLogo size={32} />
+              <ClaudeLogo size={28} theme="light" iconOnly />
             </div>
             <div>
               <div style={{fontSize:13,fontWeight:800,fontFamily:"'Plus Jakarta Sans',sans-serif",
@@ -362,7 +362,7 @@ export default function OnboardingWizard({ user, onComplete }) {
                 {f.brand === 'groq-claude' ? (
                   <div style={{display:'flex',gap:2}}>
                     <GroqIcon size={18}/>
-                    <ClaudeLogo size={18}/>
+                    <ClaudeLogo size={18} theme="light" iconOnly />
                   </div>
                 ) : f.brand ? (
                   <ServiceBrandIcon type={f.brand} size={20} />
@@ -513,7 +513,7 @@ export default function OnboardingWizard({ user, onComplete }) {
                   boxShadow:'0 2px 6px rgba(15,23,42,0.04)',
                 }}>
                   <GroqIcon size={18}/>
-                  <ClaudeLogo size={18}/>
+                  <ClaudeLogo size={18} theme="light" iconOnly />
                 </div>
               )}
               <div style={{flex:1}}>
