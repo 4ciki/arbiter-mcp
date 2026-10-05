@@ -141,48 +141,33 @@ function EditForm({ defId, draft, onDraftChange }) {
         onChange={v => onDraftChange('llm', 'api_key', v)} />
     </>
   );
-  if (defId === 'render') return (
-    <InlineField label="Backend Deploy URL" placeholder="https://arbiter-mcp.onrender.com"
-      value={draft?.deploy?.deploy_url} onChange={v => onDraftChange('deploy', 'deploy_url', v)} />
-  );
-  if (defId === 'database') return (
-    <InlineField label="Database URL"
-      placeholder="sqlite:///./arbiter.db or postgresql://user:pass@host/db"
-      value={draft?.database?.database_url} onChange={v => onDraftChange('database', 'database_url', v)} />
-  );
   return null;
 }
 
 // ── Service definitions ───────────────────────────────────────────────────────
 const DEFS = [
-  { id: 'jira',     name: 'Jira Service Management',   type: 'jira',     testType: 'jira'     },
-  { id: 'slack',    name: 'Slack Workspace',            type: 'slack',    testType: 'slack'    },
-  { id: 'llm',      name: 'AI Engine',                 type: 'groq',     testType: 'llm'      },
-  { id: 'render',   name: 'Arbiter Backend',            type: 'render',   testType: 'render'   },
-  { id: 'database', name: 'Database',                  type: 'database', testType: 'database' },
+  { id: 'jira',  name: 'Jira Service Management', type: 'jira',  testType: 'jira'  },
+  { id: 'slack', name: 'Slack Workspace',          type: 'slack', testType: 'slack' },
+  { id: 'llm',   name: 'AI Engine',               type: 'groq',  testType: 'llm'   },
 ];
 
 function isCfg(defId, cfg) {
   if (!cfg) return false;
-  if (defId === 'jira')     return !!(cfg.jira?.site_url && cfg.jira?.email && cfg.jira?.api_token);
-  if (defId === 'slack')    return !!(cfg.slack?.bot_token);
-  if (defId === 'llm')      return !!(cfg.llm?.api_key || cfg.groq?.api_key);
-  if (defId === 'render')   return !!(cfg.deploy?.deploy_url);
-  if (defId === 'database') return !!(cfg.database?.database_url);
+  if (defId === 'jira')  return !!(cfg.jira?.site_url && cfg.jira?.email && cfg.jira?.api_token);
+  if (defId === 'slack') return !!(cfg.slack?.bot_token);
+  if (defId === 'llm')   return !!(cfg.llm?.api_key || cfg.groq?.api_key);
   return false;
 }
 
 function buildTestPayload(defId, cfg) {
   if (!cfg) return null;
-  if (defId === 'jira')     return { type: 'jira', site_url: cfg.jira?.site_url, email: cfg.jira?.email, api_token: cfg.jira?.api_token };
-  if (defId === 'slack')    return { type: 'slack', bot_token: cfg.slack?.bot_token };
+  if (defId === 'jira')  return { type: 'jira', site_url: cfg.jira?.site_url, email: cfg.jira?.email, api_token: cfg.jira?.api_token };
+  if (defId === 'slack') return { type: 'slack', bot_token: cfg.slack?.bot_token };
   if (defId === 'llm') {
     const provider = cfg.llm?.provider || 'groq';
     const apiKey   = cfg.llm?.api_key || cfg.groq?.api_key || '';
     return { type: provider, api_key: apiKey };
   }
-  if (defId === 'render')   return { type: 'render', deploy_url: cfg.deploy?.deploy_url };
-  if (defId === 'database') return { type: 'database', database_url: cfg.database?.database_url };
   return null;
 }
 

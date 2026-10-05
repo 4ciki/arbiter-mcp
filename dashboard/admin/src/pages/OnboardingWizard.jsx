@@ -21,8 +21,6 @@ const STEPS = [
   { id:'jira',     title:'Jira Service Management',   sub:'Receive and triage IT tickets automatically' },
   { id:'slack',    title:'Slack Workspace',           sub:'Get instant agent notifications in Slack' },
   { id:'llm',      title:'AI Engine',                 sub:'Choose your LLM provider to power triage' },
-  { id:'deploy',   title:'Arbiter Backend URL',       sub:'Link to your deployed Arbiter server' },
-  { id:'database', title:'Database Configuration',   sub:'Persist ticket data and audit logs' },
   { id:'done',     title:'You are all set!',          sub:'Your Arbiter console is configured and ready' },
 ];
 
@@ -62,34 +60,12 @@ const GUIDES = {
     ],
     link: null,
   },
-  deploy: {
-    title: 'Finding your Arbiter backend URL',
-    steps: [
-      { icon:'cloud', text:'Deploy Arbiter MCP to Render: connect your GitHub repo and set environment variables.' },
-      { icon:'link', text:'Once deployed, Render gives you a URL like https://yourapp.onrender.com' },
-      { icon:'check_circle', text:'The default official instance is https://arbiter-mcp.onrender.com' },
-      { icon:'dns', text:'You can also self-host on Railway, Fly.io, or any cloud platform.' },
-    ],
-    link: { label:'Deploy on Render', url:'https://render.com', type:'render' },
-  },
-  database: {
-    title: 'Database options',
-    steps: [
-      { icon:'storage', text:'SQLite (default): use sqlite:///./arbiter.db for a local file-based database. Perfect for single-instance setups.' },
-      { icon:'cloud_done', text:'PostgreSQL (recommended for production): use postgresql://user:pass@host/dbname' },
-      { icon:'info', text:'Arbiter creates all tables automatically on startup.' },
-      { icon:'security', text:'Keep your database URL secret — never commit it to version control.' },
-    ],
-    link: null,
-  },
 };
 
 const INIT = {
   jira:     { site_url:'', email:'', api_token:'' },
   slack:    { bot_token:'', signing_secret:'', channel:'#general' },
   llm:      { provider:'groq', api_key:'' },
-  deploy:   { deploy_url:'https://arbiter-mcp.onrender.com' },
-  database: { database_url:'sqlite:///./arbiter.db' },
 };
 
 function Field({ label, hint, value, onChange, type='text', placeholder='' }) {
@@ -354,7 +330,7 @@ export default function OnboardingWizard({ user, onComplete }) {
   }
 
   const isLast = step===STEPS.length-1;
-  const canSkip = ['deploy','database'].includes(stepId);
+  const canSkip = false;
 
   const formContent = {
     welcome:(
@@ -373,10 +349,10 @@ export default function OnboardingWizard({ user, onComplete }) {
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,width:'100%',maxWidth:360}}>
             {[
-              {brand:'jira',     label:'Jira Service',  color:'#EEF2FF', border:'#C7D2FE' },
-              {brand:'slack',    label:'Slack Alerts',  color:'#F8FAFC', border:'#E2E8F0' },
+              {brand:'jira',     label:'Jira Service',   color:'#EEF2FF', border:'#C7D2FE' },
+              {brand:'slack',    label:'Slack Alerts',   color:'#F8FAFC', border:'#E2E8F0' },
               {brand:'groq-claude', label:'Groq / Claude', color:'#FFF7ED', border:'#FDBA74' },
-              {icon:'analytics', label:'Live Analytics',color:'#EFF6FF', border:'#BFDBFE', text:'#2563EB'},
+              {icon:'auto_awesome', label:'AI Triage',   color:'#F0FDF4', border:'#BBF7D0', text:'#059669'},
             ].map(f=>(
               <div key={f.label} style={{
                 display:'flex',alignItems:'center',gap:10,padding:'10px 14px',
@@ -443,29 +419,7 @@ export default function OnboardingWizard({ user, onComplete }) {
         onTest={()=>testCred(creds.llm.provider,{api_key:creds.llm.api_key})}
       />
     ),
-    deploy:(
-      <div style={{padding:'24px 32px',flex:1}}>
-        <Field label="Backend Deploy URL" placeholder="https://arbiter-mcp.onrender.com"
-          value={creds.deploy.deploy_url} onChange={v=>update('deploy','deploy_url',v)}
-          hint="The root URL of your deployed Arbiter FastAPI server"/>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginTop:4}}>
-          <TestBtn status={tests.render||'idle'} onTest={()=>testCred('render',{deploy_url:creds.deploy.deploy_url})}/>
-          {testMsg.render&&<span style={{fontSize:12,color:tests.render==='ok'?'#065F46':'#991B1B'}}>{testMsg.render}</span>}
-        </div>
-      </div>
-    ),
-    database:(
-      <div style={{padding:'24px 32px',flex:1}}>
-        <Field label="Database URL"
-          placeholder="sqlite:///./arbiter.db or postgresql://user:pass@host/db"
-          value={creds.database.database_url} onChange={v=>update('database','database_url',v)}
-          hint="SQLite for local, PostgreSQL for production"/>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginTop:4}}>
-          <TestBtn status={tests.database||'idle'} onTest={()=>testCred('database',{database_url:creds.database.database_url})}/>
-          {testMsg.database&&<span style={{fontSize:12,color:tests.database==='ok'?'#065F46':'#991B1B'}}>{testMsg.database}</span>}
-        </div>
-      </div>
-    ),
+
     done:(
       <div style={{padding:'24px 32px',flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center'}}>
         <motion.div initial={{scale:0}} animate={{scale:1}} transition={{type:'spring',stiffness:260,damping:20}}>
