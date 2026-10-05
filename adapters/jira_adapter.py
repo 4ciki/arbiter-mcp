@@ -35,7 +35,12 @@ from typing import Any
 
 import httpx2
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client as streamable_http_client
+try:
+    # mcp >= 2.2 renamed the function
+    from mcp.client.streamable_http import streamablehttp_client as streamable_http_client
+except ImportError:
+    # mcp < 2.2 (older Render deployment)
+    from mcp.client.streamable_http import streamable_http_client  # noqa: F401
 
 from adapters.base import TicketSource
 from config import settings
