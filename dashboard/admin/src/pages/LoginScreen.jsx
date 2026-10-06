@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useSp
 import { Loader2 } from 'lucide-react';
 import ArbiterLogo from '../components/ArbiterLogo';
 import { JiraLogo, SlackLogo, GroqIcon, ClaudeLogo } from '../components/BrandLogos';
+import AskAISection from '../components/AskAISection';
 
 const ERR = {
   'auth/popup-blocked':         'Pop-up was blocked — allow pop-ups for this page and retry.',
@@ -661,6 +662,10 @@ export default function LoginScreen({ signIn }) {
         </div>
       </section>
 
+
+      {/* ── ASK AI ABOUT ARBITER ── */}
+      <AskAISection />
+
       {/* ── CTA ── */}
       <section style={{ padding: '100px 40px', borderTop: '1px solid rgba(26,188,156,0.08)', background: 'linear-gradient(180deg,transparent,rgba(26,188,156,0.04),transparent)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle,rgba(26,188,156,0.08) 0%,transparent 70%)', filter: 'blur(60px)', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', pointerEvents: 'none' }} />
@@ -789,4 +794,4 @@ function GoogleIcon() {
       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
     </svg>
   );
-}
+}
