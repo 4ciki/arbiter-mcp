@@ -259,8 +259,9 @@ def create_app(
                 return {"ok": False, "message": f"Unexpected error: {str(exc)[:120]}"}
 
     @app.get("/health")
+    @app.head("/health")
     async def health_check():
-        """Health check endpoint for container probes."""
+        """Health check endpoint for container probes and uptime monitors."""
         return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
     @app.post("/webhooks/jira", status_code=status.HTTP_200_OK)
@@ -323,12 +324,38 @@ def create_app(
 
         decision = result.get("decision")
         action = decision.action if decision else "unknown"
+        risk_override = result.get("trust_score").risk_override if result.get("trust_score") else False
+        trust_val = result.get("trust_score").value if result.get("trust_score") else 0.5
+
+        # Multi-tier cloud persistence: sync triaged ticket to Supabase Cloud JSONB
+        try:
+            category = "software"
+            if result.get("classification") and hasattr(result["classification"], "category"):
+                category = result["classification"].category
+            t_payload = {
+                "id": ticket.id,
+                "ticket_id": ticket.id,
+                "source": "jira",
+                "title": ticket_text.split("\n")[0][:90],
+                "description": ticket_text,
+                "trust_score": trust_val,
+                "action": action,
+                "risk_override": risk_override,
+                "status": "escalated_security" if risk_override else ("escalated" if action == "escalate" else "auto_resolved"),
+                "severity": "P0_CRITICAL" if risk_override or "p0" in ticket_text.lower() else "P1_HIGH",
+                "category": category,
+                "created_at": ticket.created_at.isoformat() if ticket.created_at else datetime.now(timezone.utc).isoformat(),
+            }
+            supabase_store.save_ticket(ticket.id, "default", t_payload)
+        except Exception as sb_err:
+            log.warning("Could not sync incoming Jira ticket to Supabase: %s", sb_err)
+
         return {
             "status": "ok",
             "ticket_id": ticket.id,
             "thread_id": thread_id,
             "action": action,
-            "risk_override": result.get("trust_score").risk_override if result.get("trust_score") else False,
+            "risk_override": risk_override,
         }
 
     @app.post("/webhooks/slack/interactions", status_code=status.HTTP_200_OK)
@@ -728,6 +755,26 @@ def create_app(
                 }
             )
 
+            # Sync to Supabase Cloud unstructured table
+            try:
+                t_payload = {
+                    "id": ticket_id,
+                    "ticket_id": ticket_id,
+                    "source": source,
+                    "title": ticket_text.split("\n")[0][:90],
+                    "description": ticket_text,
+                    "trust_score": trust_value,
+                    "action": decision_action,
+                    "risk_override": risk_override,
+                    "status": "escalated_security" if risk_override else ("escalated" if decision_action == "escalate" else "auto_resolved"),
+                    "severity": severity,
+                    "category": category,
+                    "created_at": now.isoformat(),
+                }
+                supabase_store.save_ticket(ticket_id, "default", t_payload)
+            except Exception as sb_err:
+                log.warning("Could not sync triage ticket to Supabase: %s", sb_err)
+
         return {
             "ticket_id": ticket_id,
             "source": source,
@@ -821,8 +868,15 @@ def create_app(
 
     # ── Root / Health endpoints ────────────────────────────────────────────────
     @app.get("/", status_code=status.HTTP_200_OK)
+    @app.head("/", status_code=status.HTTP_200_OK)
     async def root_info(request: Request):
-        """Service info and discovery endpoint, or React Admin Console when accessed via browser."""
+        """Service info and discovery endpoint, or React Admin Console when accessed via browser.
+        Also responds to HEAD requests from uptime monitors (UptimeRobot, Pingdom, etc.).
+        """
+        # HEAD requests: return 200 with no body (correct RFC 7231 behaviour)
+        if request.method == "HEAD":
+            return Response(status_code=200)
+
         accept = request.headers.get("accept", "")
         index_file = dist_dir / "index.html"
         if "text/html" in accept and index_file.is_file():
