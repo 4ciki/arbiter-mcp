@@ -14,26 +14,35 @@ const PROMPT =
   "Live demo: https://arbiter-mcp.onrender.com  " +
   "Please explain what it does, why it matters, and what makes it unique compared to other IT automation tools.";
 
+// Whether this LLM natively auto-executes the query from URL params
+const AUTO_EXECUTE = { chatgpt: true, perplexity: true, copilot: true };
+
 function buildUrl(id) {
   const q = encodeURIComponent(PROMPT);
-  const map = {
-    chatgpt:    `https://chatgpt.com/?q=${q}`,
-    gemini:     `https://gemini.google.com/app?q=${q}`,
-    claude:     `https://claude.ai/new?q=${q}`,
-    grok:       `https://x.com/i/grok?text=${q}`,
-    perplexity: `https://www.perplexity.ai/?q=${q}`,
-    copilot:    `https://copilot.microsoft.com/?q=${q}`,
-  };
-  return map[id] || "#";
+  switch (id) {
+    // chatgpt.com/?q= auto-sends the prompt (confirmed working)
+    case "chatgpt":    return `https://chatgpt.com/?q=${q}`;
+    // Gemini ?q= fills the box but does NOT auto-send
+    case "gemini":     return `https://gemini.google.com/app?q=${q}`;
+    // Claude /new?q= fills the box but does NOT auto-send
+    case "claude":     return `https://claude.ai/new?q=${q}`;
+    // Grok text= fills the box but does NOT auto-send
+    case "grok":       return `https://x.com/i/grok?text=${q}`;
+    // Perplexity /search?q= DOES auto-execute — it's a search engine style
+    case "perplexity": return `https://www.perplexity.ai/search?q=${q}`;
+    // Copilot ?q= auto-sends in the chat interface
+    case "copilot":    return `https://copilot.microsoft.com/?q=${q}`;
+    default:           return "#";
+  }
 }
 
 const LLMS = [
-  { id:"chatgpt",    name:"ChatGPT",    color:"#10A37F", glow:"rgba(16,163,127,0.35)",  tag:"by OpenAI"    },
-  { id:"gemini",     name:"Gemini",     color:"#4285F4", glow:"rgba(66,133,244,0.35)",  tag:"by Google"    },
-  { id:"claude",     name:"Claude",     color:"#D97757", glow:"rgba(217,119,87,0.35)",  tag:"by Anthropic" },
-  { id:"grok",       name:"Grok",       color:"#A0A0A0", glow:"rgba(160,160,160,0.3)",  tag:"by xAI"       },
-  { id:"perplexity", name:"Perplexity", color:"#20808D", glow:"rgba(32,128,141,0.35)", tag:"AI search"    },
-  { id:"copilot",    name:"Copilot",    color:"#7B2FBE", glow:"rgba(123,47,190,0.35)", tag:"by Microsoft" },
+  { id:"chatgpt",    name:"ChatGPT",    color:"#10A37F", glow:"rgba(16,163,127,0.35)",  tag:"Auto-sends"        },
+  { id:"gemini",     name:"Gemini",     color:"#4285F4", glow:"rgba(66,133,244,0.35)",  tag:"Paste & Enter"     },
+  { id:"claude",     name:"Claude",     color:"#D97757", glow:"rgba(217,119,87,0.35)",  tag:"Paste & Enter"     },
+  { id:"grok",       name:"Grok",       color:"#A0A0A0", glow:"rgba(160,160,160,0.3)",  tag:"Paste & Enter"     },
+  { id:"perplexity", name:"Perplexity", color:"#20808D", glow:"rgba(32,128,141,0.35)", tag:"Auto-sends"        },
+  { id:"copilot",    name:"Copilot",    color:"#7B2FBE", glow:"rgba(123,47,190,0.35)", tag:"Auto-sends"        },
 ];
 
 function ChatGPTIcon({ size = 28 }) {
@@ -122,9 +131,48 @@ function TypedText({ text, speed = 22 }) {
   return <>{displayed}<span style={{ borderRight: "1.5px solid #1ABC9C", marginLeft: 1 }} /></>;
 }
 
+function copyToClipboard(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    // Fallback for older browsers
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  } catch (_) {}
+  return Promise.resolve();
+}
+
 export default function AskAISection() {
   const [hovered, setHovered] = useState(null);
+  const [toast, setToast]     = useState(null); // { text, color }
   const activeLLM = LLMS.find(l => l.id === hovered);
+
+  function handleLLMClick(e, llm) {
+    e.preventDefault();
+    const isAuto = AUTO_EXECUTE[llm.id];
+
+    if (!isAuto) {
+      // Copy prompt to clipboard so user can Ctrl+V → Enter in the LLM
+      copyToClipboard(PROMPT).then(() => {
+        setToast({ text: `Prompt copied! Paste it in ${llm.name} and press Enter`, color: llm.color });
+        setTimeout(() => setToast(null), 4000);
+      });
+    } else {
+      setToast({ text: `Opening ${llm.name} — sending prompt automatically…`, color: llm.color });
+      setTimeout(() => setToast(null), 3000);
+    }
+
+    // Short delay so the user can see the toast before tab switches
+    setTimeout(() => {
+      window.open(buildUrl(llm.id), "_blank", "noopener,noreferrer");
+    }, isAuto ? 120 : 400);
+  }
 
   return (
     <section style={{
@@ -237,6 +285,7 @@ export default function AskAISection() {
                 whileTap={{ scale:0.95 }}
                 onHoverStart={() => setHovered(llm.id)}
                 onHoverEnd={() => setHovered(null)}
+                onClick={(e) => handleLLMClick(e, llm)}
                 style={{
                   display:"flex",flexDirection:"column",alignItems:"center",gap:9,
                   padding:"22px 10px 18px",borderRadius:16,textDecoration:"none",
@@ -291,13 +340,38 @@ export default function AskAISection() {
 
         <motion.p initial={{ opacity:0 }} whileInView={{ opacity:1 }} viewport={{ once:true }} transition={{ delay:0.7 }}
           style={{ textAlign:"center",marginTop:32,fontSize:12,color:"#334155",lineHeight:1.7 }}>
-          Opens in a new tab with the prompt pre-loaded.&nbsp;
-          Just hit <kbd style={{ padding:"1px 6px",borderRadius:4,border:"1px solid #334155",fontSize:11,color:"#64748B" }}>Enter</kbd>
-          &nbsp;or&nbsp;
-          <kbd style={{ padding:"1px 6px",borderRadius:4,border:"1px solid #334155",fontSize:11,color:"#64748B" }}>Send</kbd>
-          &nbsp;to get the AI's perspective on Arbiter.
+          <span style={{color:"#10A37F",fontWeight:700}}>Auto-sends</span>: ChatGPT, Perplexity, Copilot &nbsp;·&nbsp;
+          <span style={{color:"#94A3B8",fontWeight:600}}>Paste &amp; Enter</span>: Gemini, Claude, Grok
+          &nbsp;— prompt is copied to your clipboard automatically.
         </motion.p>
       </div>
+        {/* Toast notification */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity:0, y:20, scale:0.95 }}
+              animate={{ opacity:1, y:0, scale:1 }}
+              exit={{ opacity:0, y:10, scale:0.95 }}
+              transition={{ duration:0.25 }}
+              style={{
+                position:"fixed", bottom:32, left:"50%", transform:"translateX(-50%)",
+                zIndex:9999, pointerEvents:"none",
+                background:"rgba(10,18,30,0.95)", backdropFilter:"blur(16px)",
+                border:`1px solid ${toast.color}55`,
+                borderRadius:12, padding:"12px 22px",
+                boxShadow:`0 8px 32px ${toast.color}44`,
+                display:"flex", alignItems:"center", gap:10,
+                maxWidth:460, whiteSpace:"nowrap",
+              }}
+            >
+              <span style={{ width:8,height:8,borderRadius:"50%",background:toast.color,flexShrink:0,boxShadow:`0 0 8px ${toast.color}` }}/>
+              <span style={{ fontSize:13,fontWeight:600,color:"#F0FDF9",fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+                {toast.text}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
     </section>
   );
 }
+
