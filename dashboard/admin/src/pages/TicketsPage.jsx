@@ -26,7 +26,7 @@ const CATEGORIES = ['All', 'security', 'network', 'hardware', 'access', 'softwar
 
 export default function TicketsPage({ onNavigate }) {
   const [tickets, setTickets] = useState([]);
-  const { jiraConnected, slackConnected } = useCredentials();
+  const { jiraConnected, slackConnected, creds } = useCredentials();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -44,38 +44,72 @@ export default function TicketsPage({ onNavigate }) {
       localStorage.removeItem('arbiter_tickets_v1');
     } catch (e) {}
 
-    async function loadTickets() {
+    const apiBase = (
+      creds?.deploy?.deploy_url ||
+      import.meta.env.VITE_API_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : '') ||
+      'https://arbiter-mcp.onrender.com'
+    ).replace(/\/$/, '');
+
+    async function loadTickets(silent = false) {
       try {
-        setLoading(true);
-        // 1. Fetch from Supabase Cloud PostgreSQL JSONB
+        if (!silent) setLoading(true);
+        // 1. Fetch from Supabase Cloud PostgreSQL JSONB (works everywhere in production)
         const cloudTickets = await fetchSupabaseTickets();
         if (mounted && Array.isArray(cloudTickets) && cloudTickets.length > 0) {
-          setTickets(cloudTickets);
-        }
-        // 2. Also check backend API
-        const res = await fetch('/api/tickets?limit=100');
-        if (res.ok) {
-          const data = await res.json();
-          if (mounted && Array.isArray(data) && data.length > 0) {
-            setTickets(prev => {
-              const map = new Map();
-              [...data, ...prev].forEach(t => {
-                const id = t.id || t.ticket_id;
-                if (id && !map.has(id)) map.set(id, t);
-              });
-              return Array.from(map.values());
+          setTickets(prev => {
+            const map = new Map();
+            [...cloudTickets, ...prev].forEach(t => {
+              const id = t.id || t.ticket_id;
+              if (id && !map.has(id)) map.set(id, t);
             });
-          }
+            return Array.from(map.values());
+          });
+        }
+
+        // 2. Also check backend API via relative URL and apiBase
+        const urlsToTry = ['/api/tickets?limit=100'];
+        if (apiBase && typeof window !== 'undefined' && !apiBase.includes(window.location.host)) {
+          urlsToTry.unshift(`${apiBase}/api/tickets?limit=100`);
+        }
+
+        for (const url of urlsToTry) {
+          try {
+            const res = await fetch(url);
+            if (res.ok) {
+              const data = await res.json();
+              if (mounted && Array.isArray(data) && data.length > 0) {
+                setTickets(prev => {
+                  const map = new Map();
+                  [...data, ...prev].forEach(t => {
+                    const id = t.id || t.ticket_id;
+                    if (id && !map.has(id)) map.set(id, t);
+                  });
+                  return Array.from(map.values());
+                });
+                break;
+              }
+            }
+          } catch (_) {}
         }
       } catch (err) {
         console.warn('Tickets fetch error:', err);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted && !silent) setLoading(false);
       }
     }
-    loadTickets();
-    return () => { mounted = false; };
-  }, []);
+
+    loadTickets(false);
+    // Auto-poll every 5 seconds so live tickets appear in real-time
+    const pollTimer = setInterval(() => {
+      loadTickets(true);
+    }, 5000);
+
+    return () => {
+      mounted = false;
+      clearInterval(pollTimer);
+    };
+  }, [creds?.deploy?.deploy_url]);
 
   const stats = useMemo(() => calculateStats(tickets), [tickets]);
 

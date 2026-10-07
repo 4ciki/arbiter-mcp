@@ -12,36 +12,61 @@ export default function OverviewPage({ onNavigate }) {
   const [tickets, setTickets] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [monthlyVolume, setMonthlyVolume] = useState(1500);
-  const { jiraConnected, slackConnected } = useCredentials();
+  const { jiraConnected, slackConnected, creds } = useCredentials();
 
-  // Fetch live metrics and tickets directly from Supabase Cloud + backend
+  // Fetch live metrics and tickets directly from Supabase Cloud + backend with live auto-refresh
   useEffect(() => {
     let mounted = true;
+    const apiBase = (
+      creds?.deploy?.deploy_url ||
+      import.meta.env.VITE_API_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : '') ||
+      'https://arbiter-mcp.onrender.com'
+    ).replace(/\/$/, '');
+
     async function loadData() {
       try {
         const cloudTickets = await fetchSupabaseTickets();
         if (mounted && Array.isArray(cloudTickets) && cloudTickets.length > 0) {
           setTickets(cloudTickets);
         }
-        const [ticketsRes, metricsRes] = await Promise.all([
-          fetch('/api/tickets?limit=100'),
-          fetch('/api/metrics')
-        ]);
-        if (ticketsRes.ok) {
-          const tData = await ticketsRes.json();
-          if (mounted && Array.isArray(tData) && tData.length > 0) setTickets(tData);
+
+        const urlsToTry = ['/api'];
+        if (apiBase && typeof window !== 'undefined' && !apiBase.includes(window.location.host)) {
+          urlsToTry.unshift(apiBase);
         }
-        if (metricsRes.ok) {
-          const mData = await metricsRes.json();
-          if (mounted) setMetrics(mData);
+
+        for (const base of urlsToTry) {
+          try {
+            const [ticketsRes, metricsRes] = await Promise.all([
+              fetch(`${base}/tickets?limit=100`),
+              fetch(`${base}/metrics`)
+            ]);
+            if (ticketsRes.ok) {
+              const tData = await ticketsRes.json();
+              if (mounted && Array.isArray(tData) && tData.length > 0) {
+                setTickets(tData);
+              }
+            }
+            if (metricsRes.ok) {
+              const mData = await metricsRes.json();
+              if (mounted) setMetrics(mData);
+            }
+            if (ticketsRes.ok || metricsRes.ok) break;
+          } catch (_) {}
         }
       } catch (err) {
         console.warn('Overview backend load failed:', err);
       }
     }
+
     loadData();
-    return () => { mounted = false; };
-  }, []);
+    const pollTimer = setInterval(loadData, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(pollTimer);
+    };
+  }, [creds?.deploy?.deploy_url]);
 
   const stats = useMemo(() => {
     const base = calculateStats(tickets);
