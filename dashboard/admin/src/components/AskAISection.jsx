@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const T = "#1ABC9C";
@@ -106,11 +106,11 @@ function copyToClipboard(text) {
   return Promise.resolve();
 }
 
-// Status badge colours
+// Status badge colours (clean LED dot indicators, zero emojis)
 const STATUS_STYLE = {
-  auto:      { bg: "rgba(26,188,156,0.12)", color: "#1ABC9C", label: "⚡ Auto-runs" },
-  prefills:  { bg: "rgba(243,156,18,0.1)",  color: "#F39C12", label: "✎ Pre-fills"  },
-  clipboard: { bg: "rgba(100,116,139,0.1)", color: "#64748B", label: "⎘ Clipboard"  },
+  auto:      { bg: "rgba(26,188,156,0.12)", color: "#1ABC9C", label: "Auto-runs", dot: "#1ABC9C" },
+  prefills:  { bg: "rgba(243,156,18,0.1)",  color: "#F39C12", label: "Pre-fills", dot: "#F39C12" },
+  clipboard: { bg: "rgba(100,116,139,0.12)", color: "#94A3B8", label: "Clipboard", dot: "#64748B" },
 };
 
 export default function AskAISection() {
@@ -125,11 +125,11 @@ export default function AskAISection() {
     // Always copy to clipboard — useful for all cases
     copyToClipboard(PROMPT).then(() => {
       if (llm.status === "auto") {
-        setToast({ text: `Opening Perplexity — executing automatically`, color: llm.color, icon: "⚡" });
+        setToast({ text: `Opening ${llm.name} — executing automatically`, color: llm.color });
       } else if (llm.status === "prefills") {
-        setToast({ text: `${llm.hint} — also copied to clipboard`, color: llm.color, icon: "✓" });
+        setToast({ text: `${llm.hint} — also copied to clipboard`, color: llm.color });
       } else {
-        setToast({ text: `Prompt copied! Paste into ${llm.name} (Ctrl+V) → Enter`, color: llm.color, icon: "⎘" });
+        setToast({ text: `Prompt copied — paste into ${llm.name} and press Enter`, color: llm.color });
       }
       setTimeout(() => setToast(null), 4500);
     });
@@ -191,33 +191,35 @@ export default function AskAISection() {
                 whileInView={{ opacity:1,y:0 }}
                 viewport={{ once:true }}
                 transition={{ duration:0.4,delay:0.06+i*0.07 }}
-                whileHover={{ y:-8,scale:1.06 }}
-                whileTap={{ scale:0.94 }}
+                whileHover={{ y:-6,scale:1.04 }}
+                whileTap={{ scale:0.95 }}
                 onHoverStart={() => setHovered(llm.id)}
                 onHoverEnd={() => setHovered(null)}
                 onClick={(e) => handleClick(e, llm)}
                 style={{
                   display:"flex",flexDirection:"column",alignItems:"center",gap:9,
                   padding:"22px 8px 16px",borderRadius:18,textDecoration:"none",
+                  minHeight:130,
                   background: isHov ? `linear-gradient(150deg,${llm.color}14,${llm.color}05)` : "rgba(8,14,24,0.75)",
                   border: isHov ? `1px solid ${llm.color}45` : "1px solid rgba(255,255,255,0.05)",
                   boxShadow: isHov ? `0 12px 40px ${llm.glow},inset 0 1px 0 rgba(255,255,255,0.04)` : "none",
-                  transition:"all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-                  cursor:"pointer",position:"relative",overflow:"hidden",
+                  transition:"background 0.25s,border 0.25s,box-shadow 0.25s",
+                  cursor:"pointer",position:"relative",overflow:"visible",
                   backdropFilter:"blur(10px)",
                 }}
               >
+                {/* ripple ring */}
                 {isHov && (
                   <motion.div
-                    initial={{ scale:0.7,opacity:0.5 }} animate={{ scale:2.1,opacity:0 }}
-                    transition={{ duration:1.0,repeat:Infinity }}
-                    style={{ position:"absolute",width:42,height:42,borderRadius:"50%",border:`1px solid ${llm.color}`,top:18,pointerEvents:"none" }}
+                    initial={{ scale:0.7,opacity:0.4 }} animate={{ scale:2.2,opacity:0 }}
+                    transition={{ duration:1.1,repeat:Infinity }}
+                    style={{ position:"absolute",width:42,height:42,borderRadius:"50%",border:`1px solid ${llm.color}`,top:18,pointerEvents:"none",zIndex:0 }}
                   />
                 )}
 
                 {/* logo */}
                 <div style={{
-                  width:48,height:48,borderRadius:12,overflow:"hidden",
+                  width:48,height:48,borderRadius:12,overflow:"hidden",flexShrink:0,
                   background: isHov ? `${llm.color}14` : "rgba(255,255,255,0.04)",
                   border:`1px solid ${isHov ? llm.color+"30":"rgba(255,255,255,0.05)"}`,
                   display:"flex",alignItems:"center",justifyContent:"center",
@@ -235,7 +237,7 @@ export default function AskAISection() {
 
                 {/* name */}
                 <div style={{
-                  fontSize:11.5,fontWeight:700,
+                  fontSize:11.5,fontWeight:700,flexShrink:0,
                   color: isHov ? "#F0FDF9" : "#475569",
                   fontFamily:"'Plus Jakarta Sans',sans-serif",
                   letterSpacing:"-0.01em",transition:"color 0.2s",
@@ -246,7 +248,7 @@ export default function AskAISection() {
 
                 {/* status badge — always visible */}
                 <div style={{
-                  fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:99,
+                  fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:99,flexShrink:0,
                   background: st.bg,color: st.color,
                   fontFamily:"'Plus Jakarta Sans',sans-serif",letterSpacing:"0.04em",
                   position:"relative",zIndex:1,
@@ -254,18 +256,22 @@ export default function AskAISection() {
                   {st.label}
                 </div>
 
-                {/* hover hint */}
+                {/* hover hint — floats BELOW card, never affects card layout */}
                 <AnimatePresence>
                   {isHov && (
-                    <motion.div initial={{ opacity:0,y:3 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:3 }}
-                      transition={{ duration:0.15 }}
+                    <motion.div
+                      initial={{ opacity:0,y:-4 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-4 }}
+                      transition={{ duration:0.18 }}
                       style={{
-                        position:"absolute",bottom:-1,left:0,right:0,
-                        background:`linear-gradient(0deg,${llm.color}22,transparent)`,
-                        borderRadius:"0 0 18px 18px",padding:"8px 6px 6px",
-                        textAlign:"center",fontSize:9,color:llm.color,
+                        position:"absolute",top:"calc(100% + 6px)",left:"50%",
+                        transform:"translateX(-50%)",
+                        background:"rgba(6,12,22,0.92)",backdropFilter:"blur(12px)",
+                        border:`1px solid ${llm.color}35`,borderRadius:8,
+                        padding:"5px 10px",whiteSpace:"nowrap",
+                        textAlign:"center",fontSize:9.5,color:llm.color,
                         fontWeight:600,fontFamily:"'Plus Jakarta Sans',sans-serif",
-                        letterSpacing:"0.02em",
+                        letterSpacing:"0.03em",zIndex:20,pointerEvents:"none",
+                        boxShadow:`0 4px 16px ${llm.glow}`,
                       }}
                     >
                       {llm.hint}
@@ -313,7 +319,8 @@ export default function AskAISection() {
               display:"flex",alignItems:"center",gap:9,maxWidth:520,
             }}
           >
-            <span style={{ fontSize:15,flexShrink:0 }}>{toast.icon}</span>
+            <span style={{ width:8,height:8,borderRadius:"50%",background:toast.color,flexShrink:0,
+              boxShadow:`0 0 8px ${toast.color}`,display:"inline-block" }}/>
             <span style={{ fontSize:12.5,fontWeight:600,color:"#F0FDF9",fontFamily:"'Plus Jakarta Sans',sans-serif",whiteSpace:"nowrap" }}>
               {toast.text}
             </span>

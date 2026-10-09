@@ -409,6 +409,43 @@ Any OpenAI-compatible endpoint. Tested with Groq (`openai/gpt-oss-20b`) and Goog
 
 ---
 
+## Contributing
+
+Arbiter MCP is actively maintained and open to contributions. We have a detailed guide that covers everything you need.
+
+**Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening any PR or issue.**
+
+### Open to contribution
+
+| Area | Where |
+|---|---|
+| New ticketing adapters (Zendesk, ServiceNow, Linear…) | `adapters/` |
+| New LLM provider support (Ollama, local models) | `llm/` |
+| Alternative vector stores / embedding models | `retrieval/` |
+| New LangGraph nodes and graph edge conditions | `agent/` |
+| Additional REST endpoints and MCP tools | `api/`, `mcp_server.py` |
+| New unit tests and benchmark ground truth entries | `tests/`, `benchmark_ground_truth.csv` |
+| Documentation, translations, worked examples | `README*.md`, `examples/` |
+| Dashboard pages and UI improvements | `dashboard/admin/src/` |
+| Docker, CI, and DevOps improvements | `Dockerfile`, `.github/workflows/` |
+
+### Not open to contribution
+
+The `risk_override` safety rule, trust score thresholds, authentication logic, and any telemetry code are **maintainer-only**. See [CONTRIBUTING.md §2](CONTRIBUTING.md#2-what-is-off-limits) for the full list.
+
+### Quickstart for contributors
+
+```bash
+git clone https://github.com/<your-fork>/arbiter-mcp.git
+cd arbiter-mcp && python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python -m pytest tests/ -v   # all 51 tests must pass
+```
+
+[Report a bug](https://github.com/4ciki/arbiter-mcp/issues/new?template=bug_report.yml) · [Propose a feature](https://github.com/4ciki/arbiter-mcp/issues/new?template=feature_request.yml) · [Open a PR](https://github.com/4ciki/arbiter-mcp/compare)
+
+---
+
 ## License
 
 Licensed under the [Apache License 2.0](LICENSE). Copyright © 2026 4ciki.

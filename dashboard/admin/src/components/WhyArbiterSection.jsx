@@ -325,13 +325,16 @@ export default function WhyArbiterSection() {
             >
               {[
                 { id: 'all', label: 'All Tickets (5)' },
-                { id: 'auto', label: '⚡ Autonomous (3)' },
-                { id: 'human', label: '🛡️ Escalated (2)' },
+                { id: 'auto', label: 'Autonomous (3)', dot: T },
+                { id: 'human', label: 'Escalated (2)', dot: AMBER },
               ].map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setFilter(tab.id)}
                   style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
                     padding: '5px 13px',
                     borderRadius: 6,
                     border: 'none',
@@ -349,6 +352,18 @@ export default function WhyArbiterSection() {
                     transition: 'all 0.15s',
                   }}
                 >
+                  {tab.dot && (
+                    <span
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: tab.dot,
+                        boxShadow: filter === tab.id ? `0 0 6px ${tab.dot}` : 'none',
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
                   {tab.label}
                 </button>
               ))}
