@@ -17,7 +17,8 @@ if (typeof window !== 'undefined' && window.localStorage) {
       'arbiter_tickets_v1',
       'arbiter_tickets',
       'arbiter_tickets_mock',
-      'arbiter_tickets_benchmark'
+      'arbiter_tickets_benchmark',
+      'arbiter_live_tickets_stream_v3'
     ];
     keysToPurge.forEach(k => localStorage.removeItem(k));
   } catch (e) {
@@ -25,7 +26,7 @@ if (typeof window !== 'undefined' && window.localStorage) {
   }
 }
 
-const STORAGE_KEY = 'arbiter_live_tickets_stream_v3';
+const STORAGE_KEY = 'arbiter_live_tickets_stream_v4';
 
 export const INITIAL_TICKETS = [];
 

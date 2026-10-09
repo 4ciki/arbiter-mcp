@@ -49,22 +49,17 @@ export function useAuth() {
   }, []);
 
   const signIn = async () => {
-    if (IS_LOCAL) {
-      // Popup works fine on localhost without COOP restrictions
-      try {
-        return await signInWithPopup(auth, googleProvider);
-      } catch (err) {
-        if (
-          err.code === 'auth/popup-blocked' ||
-          err.code === 'auth/cancelled-popup-request'
-        ) {
-          return await signInWithRedirect(auth, googleProvider);
-        }
-        throw err;
+    try {
+      return await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      // If popup was blocked by browser, fall back to redirect
+      if (
+        err.code === 'auth/popup-blocked' ||
+        err.code === 'auth/cancelled-popup-request'
+      ) {
+        return await signInWithRedirect(auth, googleProvider);
       }
-    } else {
-      // Production: always use redirect to avoid COOP header blocking window.close()
-      return await signInWithRedirect(auth, googleProvider);
+      throw err;
     }
   };
 
