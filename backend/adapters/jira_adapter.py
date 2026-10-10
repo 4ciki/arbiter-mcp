@@ -214,6 +214,89 @@ class JiraMCPAdapter(TicketSource):
             else:
                 log.error("Could not find transition %s for %s among %s", status, ticket_id, [t.get('name') for t in transitions])
 
+    @staticmethod
+    def _extract_adf_text(doc: Any) -> str:
+        """Recursively extracts plain text from Atlassian Document Format JSON or string."""
+        if not doc:
+            return ""
+        if isinstance(doc, str):
+            return doc
+        texts = []
+        def recurse(node):
+            if isinstance(node, dict):
+                if node.get("type") == "text" and "text" in node:
+                    texts.append(str(node["text"]))
+                for v in node.values():
+                    recurse(v)
+            elif isinstance(node, list):
+                for item in node:
+                    recurse(item)
+        recurse(doc)
+        return " ".join(texts).strip()
+
+    async def search_tickets(
+        self,
+        site_url: Optional[str] = None,
+        email: Optional[str] = None,
+        token: Optional[str] = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """Search and fetch recent issues from Jira via REST API /rest/api/3/search/jql."""
+        target_site = (site_url or settings.JIRA_SITE_URL or "").rstrip("/")
+        target_email = email or settings.JIRA_EMAIL
+        target_token = token or settings.JIRA_API_TOKEN
+        if not target_site or not target_email or not target_token:
+            log.warning("search_tickets: Missing Jira credentials")
+            return []
+
+        auth_header = _auth_header(target_email, target_token)
+        search_url = f"{target_site}/rest/api/3/search/jql"
+        payload = {
+            "jql": "created >= -365d ORDER BY created DESC",
+            "maxResults": limit,
+            "fields": ["summary", "description", "status", "reporter", "created", "priority"],
+        }
+
+        resp = await self._http_client.post(
+            search_url,
+            json=payload,
+            headers={
+                "Authorization": auth_header,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        results = []
+        for issue in data.get("issues", []):
+            key = issue.get("key")
+            fields = issue.get("fields", {})
+            summary = fields.get("summary", "")
+            raw_desc = fields.get("description")
+            desc = self._extract_adf_text(raw_desc)
+            rep = fields.get("reporter") or {}
+            reporter_name = rep.get("displayName") or "Anonymous User"
+            reporter_email = rep.get("emailAddress") or ""
+            created_raw = fields.get("created")
+            status_obj = fields.get("status") or {}
+            status_name = status_obj.get("name", "Open")
+            priority_obj = fields.get("priority") or {}
+            priority_name = priority_obj.get("name", "Medium")
+
+            results.append({
+                "id": key,
+                "key": key,
+                "summary": summary,
+                "description": desc,
+                "reporter_name": reporter_name,
+                "reporter_email": reporter_email,
+                "created_at": created_raw,
+                "status": status_name,
+                "priority": priority_name,
+            })
+        return results
+
     async def aclose(self) -> None:
         """Close the underlying httpx2 client. Call on FastAPI lifespan shutdown."""
         await self._http_client.aclose()

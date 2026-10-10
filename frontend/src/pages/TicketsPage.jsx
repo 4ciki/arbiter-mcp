@@ -175,6 +175,37 @@ export default function TicketsPage({ onNavigate }) {
     toast.success(`Broadcasted Ticket ${ticketId} to Slack war room.`);
   };
 
+  const [syncingJira, setSyncingJira] = useState(false);
+
+  const handleSyncJira = async () => {
+    setSyncingJira(true);
+    try {
+      const apiBase = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
+        ? 'http://localhost:8000'
+        : 'https://arbiter-mcp-backend.onrender.com';
+      const res = await fetch(`${apiBase}/api/jira/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: 'default' }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast.success(`Synced ${data.count} issues directly from Jira!`);
+        const cloudTickets = await fetchSupabaseTickets();
+        if (Array.isArray(cloudTickets) && cloudTickets.length > 0) {
+          setTickets(cloudTickets);
+        }
+      } else {
+        toast.error(data.error || 'Failed to sync with Jira');
+      }
+    } catch (err) {
+      console.warn('Jira sync error:', err);
+      toast.error('Could not connect to Jira sync service');
+    } finally {
+      setSyncingJira(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {(!jiraConnected && !slackConnected) ? (
@@ -629,20 +660,38 @@ export default function TicketsPage({ onNavigate }) {
                 ))}
               </div>
 
-              {/* Simulator CTA */}
-              <button
-                onClick={() => onNavigate?.('simulator')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 16px', background: '#4F46E5', color: 'white',
-                  border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                  fontFamily: "'Plus Jakarta Sans',sans-serif", cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(79,70,229,0.25)',
-                }}
-              >
-                <span className="mso sm">play_arrow</span>
-                Simulate Ticket Triage
-              </button>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  onClick={handleSyncJira}
+                  disabled={syncingJira}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '9px 16px', background: '#0052CC', color: 'white',
+                    border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                    fontFamily: "'Plus Jakarta Sans',sans-serif", cursor: syncingJira ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,82,204,0.25)',
+                    opacity: syncingJira ? 0.7 : 1,
+                  }}
+                >
+                  <JiraLogo size={15} />
+                  {syncingJira ? 'Syncing...' : 'Sync Jira'}
+                </button>
+
+                <button
+                  onClick={() => onNavigate?.('simulator')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '9px 16px', background: '#4F46E5', color: 'white',
+                    border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                    fontFamily: "'Plus Jakarta Sans',sans-serif", cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(79,70,229,0.25)',
+                  }}
+                >
+                  <span className="mso sm">play_arrow</span>
+                  Simulate Ticket Triage
+                </button>
+              </div>
             </div>
 
             {/* Category Pills */}
