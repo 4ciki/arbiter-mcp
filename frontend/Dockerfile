@@ -52,7 +52,11 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+# Copy startup script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
 EXPOSE 80 10000
 
-# Substitute PORT dynamically without altering Nginx's internal $uri variables, test syntax, then start
-CMD ["/bin/sh", "-c", "sed -i \"s/listen 80;/listen ${PORT:-10000};/g\" /etc/nginx/conf.d/default.conf && nginx -t && exec nginx -g 'daemon off;'"]
+ENTRYPOINT []
+CMD ["/bin/sh", "/start.sh"]
