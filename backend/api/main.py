@@ -1,11 +1,20 @@
 """
 FastAPI application for Arbiter (§2.9).
 
-Exposes four primary endpoints:
+This is the BACKEND service — a pure API + MCP server.
+The React frontend is deployed as a separate service and communicates
+with this server exclusively via HTTP API calls (no static file serving here).
+
+Endpoints:
   - POST /webhooks/jira                 → starts graph run for new ticket
   - POST /webhooks/slack/interactions   → verifies raw signature, resumes graph run
   - GET  /api/tickets                   → paginated ticket list
   - GET  /api/audit                     → paginated audit log
+  - GET  /api/user-config               → fetch user credentials config
+  - POST /api/user-config               → save user credentials config
+  - POST /api/test-credential           → test a third-party API credential
+  - GET  /health                        → health check
+  - POST /mcp                           → MCP tool calls (Smithery)
 """
 
 from __future__ import annotations
@@ -21,8 +30,6 @@ from urllib.parse import parse_qs
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from slack_sdk.signature import SignatureVerifier
 
 from agent.graph import get_default_graph, resume_graph, run_graph
@@ -1198,22 +1205,9 @@ def create_app(
             "tools": ["triage_ticket", "get_ticket", "list_tickets", "get_metrics"],
         }
 
-    # ── Frontend static assets and SPA fallback ──────────────────────────────
-    if dist_dir.is_dir():
-        assets_dir = dist_dir / "assets"
-        if assets_dir.is_dir():
-            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
-
-        @app.get("/{full_path:path}")
-        async def spa_fallback(request: Request, full_path: str):
-            target = dist_dir / full_path
-            if target.is_file():
-                return FileResponse(str(target))
-            accept = request.headers.get("accept", "")
-            index_file = dist_dir / "index.html"
-            if index_file.is_file() and ("text/html" in accept or "." not in full_path):
-                return FileResponse(str(index_file))
-            raise HTTPException(status_code=404, detail="Not found")
+    # NOTE: Static file serving has been removed.
+    # The React frontend is deployed as a separate service (see frontend/ directory).
+    # All frontend → backend communication goes through the API endpoints above.
 
     return app
 

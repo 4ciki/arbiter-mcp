@@ -6,19 +6,10 @@ firebase_creds.env
 !.env.example
 *.json
 !benchmark_results.json
-!frontend/package.json
-!frontend/package-lock.json
-!frontend/.oxlintrc.json
-!backend/.well-known/mcp/server-card.json
 !.well-known/mcp/server-card.json
 # (service-account key files are *.json; keep this broad)
-
-# ── Frontend & Node ────────────────────────────────────────────────────────────
-node_modules/
-frontend/node_modules/
-frontend/dist/
-frontend/dist-ssr/
-frontend/*.local
+# If you need to commit non-secret JSON, add an explicit !exception below, e.g.:
+# !some_safe_schema.json
 
 # ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/

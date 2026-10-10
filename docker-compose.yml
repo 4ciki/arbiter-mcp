@@ -1,37 +1,33 @@
 services:
-  arbiter:
+  backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: arbiter-api
+    container_name: arbiter-backend
     restart: unless-stopped
     ports:
       - "8000:8000"
-    env_file:
-      - .env
     volumes:
       - chroma_data:/app/chroma_data
       - db_data:/app/db_data
     environment:
       - DATABASE_URL=sqlite:////app/db_data/arbiter.db
       - CHROMA_PATH=/app/chroma_data
+      - PORT=8000
     command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-  dashboard:
+  frontend:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
-    container_name: arbiter-dashboard
+      args:
+        - VITE_API_URL=http://localhost:8000
+    container_name: arbiter-frontend
     restart: unless-stopped
     ports:
-      - "8501:8501"
-    env_file:
-      - .env
-    environment:
-      - ARBITER_API_URL=http://arbiter:8000
+      - "3000:80"
     depends_on:
-      - arbiter
-    command: ["streamlit", "run", "dashboard/app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+      - backend
 
 volumes:
   chroma_data:

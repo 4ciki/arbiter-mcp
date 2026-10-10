@@ -16,7 +16,6 @@ startCommand:
       command: "python",
       args: ["-m", "mcp_server"],
       env: {
-        PYTHONPATH:           "backend",
         JIRA_SITE_URL:        config.jiraSiteUrl        || "",
         JIRA_EMAIL:           config.jiraEmail          || "",
         JIRA_API_TOKEN:       config.jiraApiToken       || "",

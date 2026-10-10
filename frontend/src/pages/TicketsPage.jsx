@@ -47,9 +47,9 @@ export default function TicketsPage({ onNavigate }) {
     const apiBase = (
       creds?.deploy?.deploy_url ||
       import.meta.env.VITE_API_URL ||
-      (typeof window !== 'undefined' ? window.location.origin : '') ||
-      'https://arbiter-mcp.onrender.com'
+      'http://localhost:8000'
     ).replace(/\/$/, '');
+
 
     async function loadTickets(silent = false) {
       try {

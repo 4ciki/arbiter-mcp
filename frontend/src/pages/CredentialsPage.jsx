@@ -190,9 +190,9 @@ export default function CredentialsPage({ user, onLog }) {
   const API_BASE_URL = (
     config?.deploy?.deploy_url ||
     import.meta.env.VITE_API_URL ||
-    (typeof window !== 'undefined' ? window.location.origin : '') ||
-    'https://arbiter-mcp.onrender.com'
+    'http://localhost:8000'
   ).replace(/\/$/, '');
+
 
   // Load config from LocalStorage immediately, then Backend Database & Firestore with auto-heal
   useEffect(() => {

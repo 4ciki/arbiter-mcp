@@ -8,6 +8,8 @@ import {
   mergeConfigs,
   saveLocalConfig
 } from '../data/configStorage';
+import { getApiBase } from '../data/apiConfig';
+
 
 /**
  * Returns the saved credentials config from multi-tier resilient storage for the current user.
@@ -20,7 +22,8 @@ export function useCredentials() {
 
   useEffect(() => {
     let unsubSnap = null;
-    const API_BASE = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
+    const API_BASE = getApiBase();
+
 
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (unsubSnap) { unsubSnap(); unsubSnap = null; }

@@ -1,3 +1,0 @@
-"""
-Arbiter Streamlit dashboard package.
-"""

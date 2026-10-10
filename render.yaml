@@ -1,26 +1,35 @@
 # Render.com deployment configuration for Arbiter MCP
+# Two independent services deployed from the same monorepo.
+#
+# ┌──────────────────────────────────────────────────────────┐
+# │  arbiter-backend  →  FastAPI + MCP server (Python)       │
+# │  arbiter-frontend →  React SPA (nginx static host)       │
+# └──────────────────────────────────────────────────────────┘
+#
 # Deploy at: https://dashboard.render.com/new/web-service
 # Connect your GitHub repo (4ciki/arbiter-mcp) and Render auto-detects this file.
 #
-# After deploy, your Smithery MCP Server URL will be:
-#   https://arbiter-mcp.onrender.com/mcp
+# IMPORTANT: After deploying the backend first, copy its URL
+# (e.g. https://arbiter-backend.onrender.com) and set it as
+# VITE_API_URL in the frontend service env vars, then re-deploy the frontend.
 #
 # Free tier note: Render free web services spin down after 15min inactivity.
 # Upgrade to Starter ($7/mo) for always-on. For Smithery testing, free is fine.
 
 services:
+  # ─── Backend: FastAPI + MCP server ─────────────────────────────────────────
   - type: web
-    name: arbiter-mcp
+    name: arbiter-backend
     runtime: docker
-    dockerfilePath: ./Dockerfile
+    # Docker context is the backend/ subfolder — only backend code is built
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
     plan: free
     region: oregon
 
     # Health check — Render uses this to confirm the service is live
     healthCheckPath: /health
 
-    # All credentials are optional — server runs in offline/demo mode without them.
-    # Add real values in Render Dashboard → Environment for production use.
     envVars:
       - key: LOG_LEVEL
         value: INFO
@@ -44,3 +53,37 @@ services:
       #   sync: false
       # - key: GCP_PROJECT_ID
       #   value: your-gcp-project
+      # - key: SUPABASE_URL
+      #   sync: false
+      # - key: SUPABASE_KEY
+      #   sync: false
+
+  # ─── Frontend: React SPA served via nginx ───────────────────────────────────
+  - type: web
+    name: arbiter-frontend
+    runtime: docker
+    # Docker context is the frontend/ subfolder — only frontend code is built
+    dockerContext: ./frontend
+    dockerfilePath: ./frontend/Dockerfile
+    plan: free
+    region: oregon
+
+    envVars:
+      # !! Set this to your deployed backend URL BEFORE deploying the frontend !!
+      # Example: https://arbiter-backend.onrender.com
+      - key: VITE_API_URL
+        value: https://arbiter-backend.onrender.com
+
+      # Firebase config — set as secrets in Render Dashboard
+      # - key: VITE_FIREBASE_API_KEY
+      #   sync: false
+      # - key: VITE_FIREBASE_AUTH_DOMAIN
+      #   sync: false
+      # - key: VITE_FIREBASE_PROJECT_ID
+      #   sync: false
+      # - key: VITE_FIREBASE_STORAGE_BUCKET
+      #   sync: false
+      # - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+      #   sync: false
+      # - key: VITE_FIREBASE_APP_ID
+      #   sync: false

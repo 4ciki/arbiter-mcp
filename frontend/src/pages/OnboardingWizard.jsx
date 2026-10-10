@@ -14,7 +14,10 @@ import {
 } from '../data/configStorage';
 
 
-const API_BASE = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '') || 'https://arbiter-mcp.onrender.com').replace(/\/$/, '');
+import { getApiBase } from '../data/apiConfig';
+
+const API_BASE = getApiBase();
+
 
 const STEPS = [
   { id:'welcome',  title:'Welcome to Arbiter MCP',    sub:'Set up your AI helpdesk agent in minutes' },

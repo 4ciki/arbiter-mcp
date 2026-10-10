@@ -14,7 +14,6 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from api.main import create_app
-from dashboard.app import fetch_data
 from db.models import Base
 from db.repository import ArbiterRepository
 from schemas import Decision, Ticket, TrustScore

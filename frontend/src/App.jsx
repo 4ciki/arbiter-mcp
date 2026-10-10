@@ -41,10 +41,11 @@ export default function App() {
 
     let isMounted = true;
 
+    // VITE_API_URL is baked in at build time (set in Render env vars).
+    // For local dev, the vite.config.js proxy forwards /api to localhost:8000.
     const API_BASE = (
       import.meta.env.VITE_API_URL ||
-      (typeof window !== 'undefined' ? window.location.origin : '') ||
-      'https://arbiter-mcp.onrender.com'
+      'http://localhost:8000'
     ).replace(/\/$/, '');
 
     const markConfigured = () => {
