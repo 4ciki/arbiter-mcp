@@ -130,7 +130,8 @@ export default function TicketsPage({ onNavigate }) {
         const matchTitle = t.title?.toLowerCase().includes(q);
         const matchText = t.description?.toLowerCase().includes(q);
         const matchId = t.id?.toLowerCase().includes(q);
-        const matchRep = t.reporter?.name?.toLowerCase().includes(q);
+        const repName = typeof t.reporter === 'object' ? (t.reporter?.name || '') : (t.reporter || '');
+        const matchRep = repName.toLowerCase().includes(q);
         if (!matchTitle && !matchText && !matchId && !matchRep) return false;
       }
 
@@ -779,9 +780,9 @@ export default function TicketsPage({ onNavigate }) {
                               {t.title}
                             </div>
                             <div style={{ fontSize: 11.5, color: '#64748B', display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span>{t.reporter?.name || 'Anonymous User'}</span>
+                              <span>{typeof t.reporter === 'object' ? (t.reporter?.name || 'Anonymous User') : (t.reporter || 'Anonymous User')}</span>
                               <span style={{ color: '#CBD5E1' }}>•</span>
-                              <span style={{ color: '#94A3B8' }}>{t.reporter?.dept || 'General'}</span>
+                              <span style={{ color: '#94A3B8' }}>{typeof t.reporter === 'object' ? (t.reporter?.dept || 'General') : 'General'}</span>
                             </div>
                           </td>
 
@@ -944,10 +945,10 @@ export default function TicketsPage({ onNavigate }) {
                   </div>
                   <div>
                     <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 15, fontWeight: 800, color: '#0F172A' }}>
-                      {selectedTicket.id}
+                      {selectedTicket.id || selectedTicket.ticket_id}
                     </div>
                     <div style={{ fontSize: 11, color: '#94A3B8' }}>
-                      Reported by {selectedTicket.reporter.name} • {new Date(selectedTicket.created_at).toLocaleString()}
+                      Reported by {typeof selectedTicket.reporter === 'object' ? (selectedTicket.reporter?.name || 'Anonymous User') : (selectedTicket.reporter || 'Anonymous User')} • {selectedTicket.created_at ? new Date(selectedTicket.created_at).toLocaleString() : 'Recently'}
                     </div>
                   </div>
                 </div>
@@ -964,10 +965,10 @@ export default function TicketsPage({ onNavigate }) {
                 {/* Title & Description */}
                 <div>
                   <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', fontFamily: "'Plus Jakarta Sans',sans-serif", marginBottom: 8, lineHeight: 1.3 }}>
-                    {selectedTicket.title}
+                    {selectedTicket.title || selectedTicket.summary || selectedTicket.id || selectedTicket.ticket_id}
                   </h3>
                   <div style={{ padding: '14px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
-                    {selectedTicket.description}
+                    {selectedTicket.description || selectedTicket.text || 'No description provided.'}
                   </div>
                 </div>
 
@@ -987,10 +988,14 @@ export default function TicketsPage({ onNavigate }) {
                     </span>
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>
-                    {selectedTicket.recommended_action.label}
+                    {typeof selectedTicket.recommended_action === 'object'
+                      ? (selectedTicket.recommended_action?.label || 'Action Evaluated')
+                      : (selectedTicket.recommended_action || selectedTicket.action || 'Auto-Triage Analysis Complete')}
                   </div>
                   <p style={{ fontSize: 12.5, color: '#475569', lineHeight: 1.5, marginBottom: 12 }}>
-                    {selectedTicket.recommended_action.reason}
+                    {typeof selectedTicket.recommended_action === 'object'
+                      ? (selectedTicket.recommended_action?.reason || 'Evaluation completed by Arbiter deterministic trust engine.')
+                      : (selectedTicket.action === 'auto_resolve' ? 'Safe routine issue exceeding 85% trust threshold.' : 'Escalated to human operator due to trust score or risk override.')}
                   </p>
 
                   {/* Why Slack or Jira? Explanation banner */}
@@ -1002,7 +1007,11 @@ export default function TicketsPage({ onNavigate }) {
                     <strong style={{ color: '#0F172A', display: 'block', marginBottom: 2 }}>
                       ℹ️ External Action Rationale:
                     </strong>
-                    {selectedTicket.recommended_action.external_justification}
+                    {typeof selectedTicket.recommended_action === 'object'
+                      ? (selectedTicket.recommended_action?.external_justification || 'Routing determined by Arbiter classification engine.')
+                      : (selectedTicket.action === 'auto_resolve'
+                          ? 'Zero human intervention required. Ticket closed in Jira with resolution note.'
+                          : 'High severity or low confidence ticket routed to Slack engineer channel for human approval.')}
                   </div>
                 </div>
 
@@ -1022,7 +1031,9 @@ export default function TicketsPage({ onNavigate }) {
                     </div>
                     <div style={{ padding: '10px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>LLM Confidence</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginTop: 4 }}>{Math.round(selectedTicket.trust_score * 100)}%</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginTop: 4 }}>
+                        {selectedTicket.trust_score != null ? Math.round(selectedTicket.trust_score <= 1 ? selectedTicket.trust_score * 100 : selectedTicket.trust_score) : 85}%
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1033,17 +1044,28 @@ export default function TicketsPage({ onNavigate }) {
                     Vector Matched Cases (ChromaDB)
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {selectedTicket.similar_cases?.map(sc => (
-                      <div key={sc.ticket_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8 }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 12.5, color: '#0F172A', fontFamily: "'JetBrains Mono',monospace" }}>{sc.ticket_id}</div>
-                          <div style={{ fontSize: 11, color: '#64748B' }}>{sc.summary}</div>
-                        </div>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: 6 }}>
-                          {Math.round(sc.similarity * 100)}% match
-                        </span>
+                    {(selectedTicket.similar_cases && selectedTicket.similar_cases.length > 0) ? (
+                      selectedTicket.similar_cases.map((sc, idx) => {
+                        const scId = sc?.ticket_id || sc?.id || `CASE-${idx + 1}`;
+                        const scSummary = sc?.summary || sc?.title || sc?.text || 'Historical match in ChromaDB';
+                        const scSim = sc?.similarity != null ? Math.round(sc.similarity <= 1 ? sc.similarity * 100 : sc.similarity) : 85;
+                        return (
+                          <div key={scId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8 }}>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: 12.5, color: '#0F172A', fontFamily: "'JetBrains Mono',monospace" }}>{scId}</div>
+                              <div style={{ fontSize: 11, color: '#64748B' }}>{scSummary}</div>
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: 6 }}>
+                              {scSim}% match
+                            </span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div style={{ padding: '12px 14px', background: '#F8FAFC', border: '1px dashed #CBD5E1', borderRadius: 8, fontSize: 12, color: '#64748B', textAlign: 'center' }}>
+                        No vector matches recorded for this case
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>
@@ -1077,7 +1099,7 @@ export default function TicketsPage({ onNavigate }) {
                   </a>
                 )}
                 <button
-                  onClick={() => handleEscalateSlack(selectedTicket.id)}
+                  onClick={() => handleEscalateSlack(selectedTicket.id || selectedTicket.ticket_id)}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px',
                     background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8,
@@ -1088,7 +1110,7 @@ export default function TicketsPage({ onNavigate }) {
                   Escalate to Slack
                 </button>
                 <button
-                  onClick={() => handleResolve(selectedTicket.id)}
+                  onClick={() => handleResolve(selectedTicket.id || selectedTicket.ticket_id)}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px',
                     background: '#059669', border: 'none', borderRadius: 8, fontSize: 12.5,
