@@ -72,7 +72,7 @@ services:
       # !! Set this to your deployed backend URL BEFORE deploying the frontend !!
       # Example: https://arbiter-backend.onrender.com
       - key: VITE_API_URL
-        value: https://arbiter-backend.onrender.com
+        value: https://arbiter-mcp-backend.onrender.com
 
       # Firebase config — set as secrets in Render Dashboard
       # - key: VITE_FIREBASE_API_KEY

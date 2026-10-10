@@ -71,7 +71,7 @@ Open http://localhost:5173
 1. In the Render dashboard, open **arbiter-frontend**
 2. Set the environment variable:
    ```
-   VITE_API_URL = https://arbiter-backend.onrender.com
+   VITE_API_URL = https://arbiter-mcp-backend.onrender.com
    ```
 3. Deploy — Render builds the Vite SPA with `VITE_API_URL` baked into the JS bundle
 

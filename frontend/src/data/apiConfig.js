@@ -13,7 +13,13 @@
  *   const res = await fetch(`${getApiBase()}/api/tickets`);
  */
 export function getApiBase() {
-  return (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/$/, '');
+  }
+  if (import.meta.env.DEV) {
+    return 'http://localhost:8000';
+  }
+  return 'https://arbiter-mcp-backend.onrender.com';
 }
 
 /** Convenience alias for one-liner usage. */

@@ -18,7 +18,7 @@ COPY package*.json ./
 RUN npm ci --prefer-offline --no-audit
 
 # Declare build-time args (passed via Render → Environment / docker build --build-arg)
-ARG VITE_API_URL
+ARG VITE_API_URL=https://arbiter-mcp-backend.onrender.com
 ARG VITE_FIREBASE_API_KEY
 ARG VITE_FIREBASE_AUTH_DOMAIN
 ARG VITE_FIREBASE_PROJECT_ID
