@@ -5,7 +5,7 @@
 #   2. nginx — serves the compiled static files with SPA routing
 #
 # Environment variables injected at build time via --build-arg:
-#   VITE_API_URL  — full URL of the deployed backend (e.g. https://arbiter-backend.onrender.com)
+#   VITE_API_URL  — full URL of the deployed backend (e.g. https://arbiter-mcp-backend.onrender.com)
 #   VITE_FIREBASE_*  — Firebase project config
 
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
@@ -41,18 +41,18 @@ RUN npm run build
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────
 FROM nginx:1.27-alpine AS runtime
 
-ENV PORT=80
+ENV PORT=10000
 
 # Remove default nginx config
 RUN rm -f /etc/nginx/conf.d/default.conf
 
-# Copy custom nginx config to templates
-RUN mkdir -p /etc/nginx/templates
-COPY nginx.conf /etc/nginx/templates/default.conf.template
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80 10000
 
-CMD ["/bin/sh", "-c", "envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
+# Substitute PORT dynamically without altering Nginx's internal $uri variables, test syntax, then start
+CMD ["/bin/sh", "-c", "sed -i \"s/listen 80;/listen ${PORT:-10000};/g\" /etc/nginx/conf.d/default.conf && nginx -t && exec nginx -g 'daemon off;'"]
