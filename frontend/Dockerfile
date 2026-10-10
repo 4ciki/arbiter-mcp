@@ -41,15 +41,18 @@ RUN npm run build
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────
 FROM nginx:1.27-alpine AS runtime
 
-# Remove default nginx config
-RUN rm /etc/nginx/conf.d/default.conf
+ENV PORT=80
 
-# Copy our custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Remove default nginx config
+RUN rm -f /etc/nginx/conf.d/default.conf
+
+# Copy custom nginx config to templates
+RUN mkdir -p /etc/nginx/templates
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 80 10000
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/bin/sh", "-c", "envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
