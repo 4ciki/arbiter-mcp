@@ -7,9 +7,12 @@ on:
     branches: [ "main" ]
 
 jobs:
-  test:
-    name: Run Test Suite
+  backend-test:
+    name: Backend Pytest Suite
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
 
     steps:
       - name: Check out repository
@@ -20,7 +23,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: "pip"
-          cache-dependency-path: "requirements.txt"
+          cache-dependency-path: "backend/requirements.txt"
 
       - name: Install dependencies
         run: |
@@ -30,3 +33,27 @@ jobs:
       - name: Run Pytest Suite
         run: |
           python -m pytest tests/ -v --tb=short
+
+  frontend-build:
+    name: Frontend Build Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "frontend/package-lock.json"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Vite application
+        run: npm run build
