@@ -319,13 +319,16 @@ Fill in your credentials (see [.env.example](.env.example)):
 docker-compose up --build
 ```
 
-- **FastAPI + Webhooks**: [http://localhost:8000](http://localhost:8000) · [Docs](http://localhost:8000/docs) · [Health](http://localhost:8000/health)
-- **Streamlit Dashboard**: [http://localhost:8501](http://localhost:8501)
+- **FastAPI + Webhooks + MCP**: [http://localhost:8000](http://localhost:8000) · [Docs](http://localhost:8000/docs) · [Health](http://localhost:8000/health)
+- **Operations Console (React + Vite)**: [http://localhost:5173](http://localhost:5173)
 
 Without Docker:
 ```bash
-uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload   # Terminal 1
-streamlit run dashboard/app.py --server.port 8501           # Terminal 2
+# Terminal 1: Backend API
+cd backend && uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Terminal 2: Frontend Console
+cd frontend && npm install && npm run dev
 ```
 
 ---
@@ -335,7 +338,7 @@ streamlit run dashboard/app.py --server.port 8501           # Terminal 2
 <img src="https://img.shields.io/badge/pytest-51%20passed-22C55E?logo=pytest&logoColor=white" height="20" />
 
 ```bash
-python -m pytest tests/ -v
+cd backend && python -m pytest tests/ -v
 ```
 
 All 51 tests run fully offline — no external credentials, no network required. Coverage: pure scoring math, ORM persistence, vector retrieval isolation, LangGraph state checkpoints, webhook signature security.
@@ -419,15 +422,16 @@ Arbiter MCP is actively maintained and open to contributions. We have a detailed
 
 | Area | Where |
 |---|---|
-| New ticketing adapters (Zendesk, ServiceNow, Linear…) | `adapters/` |
-| New LLM provider support (Ollama, local models) | `llm/` |
-| Alternative vector stores / embedding models | `retrieval/` |
-| New LangGraph nodes and graph edge conditions | `agent/` |
-| Additional REST endpoints and MCP tools | `api/`, `mcp_server.py` |
-| New unit tests and benchmark ground truth entries | `tests/`, `benchmark_ground_truth.csv` |
-| Documentation, translations, worked examples | `README*.md`, `examples/` |
-| Dashboard pages and UI improvements | `dashboard/admin/src/` |
-| Docker, CI, and DevOps improvements | `Dockerfile`, `.github/workflows/` |
+| New ticketing adapters (Zendesk, ServiceNow, Linear…) | `backend/adapters/` |
+| Direct ticket search & synchronization | `backend/adapters/jira_adapter.py` |
+| New LLM provider support (Ollama, local models) | `backend/llm/` |
+| Alternative vector stores / embedding models | `backend/retrieval/` |
+| New LangGraph nodes and graph edge conditions | `backend/agent/` |
+| Additional REST endpoints and MCP tools | `backend/api/`, `backend/mcp_server.py` |
+| New unit tests and benchmark ground truth entries | `backend/tests/`, `backend/benchmark_ground_truth.csv` |
+| Documentation, translations, worked examples | `README*.md`, `backend/examples/` |
+| Operations Console pages and UI improvements | `frontend/src/pages/` |
+| Docker, CI, and DevOps improvements | `backend/Dockerfile`, `frontend/Dockerfile`, `render.yaml` |
 
 ### Not open to contribution
 
@@ -437,9 +441,15 @@ The `risk_override` safety rule, trust score thresholds, authentication logic, a
 
 ```bash
 git clone https://github.com/<your-fork>/arbiter-mcp.git
-cd arbiter-mcp && python -m venv .venv && source .venv/bin/activate
+cd arbiter-mcp
+
+# 1. Setup Backend & verify tests
+cd backend && python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python -m pytest tests/ -v   # all 51 tests must pass
+
+# 2. Run Frontend locally
+cd ../frontend && npm install && npm run dev
 ```
 
 [Report a bug](https://github.com/4ciki/arbiter-mcp/issues/new?template=bug_report.yml) · [Propose a feature](https://github.com/4ciki/arbiter-mcp/issues/new?template=feature_request.yml) · [Open a PR](https://github.com/4ciki/arbiter-mcp/compare)

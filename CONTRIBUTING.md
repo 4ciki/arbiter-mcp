@@ -1,4 +1,4 @@
-﻿# Contributing to Arbiter MCP
+# Contributing to Arbiter MCP
 
 > **Thank you for helping make Arbiter MCP better.**
 > This document is the single source of truth for contributors — read it once, save it, and refer back whenever you open a PR.
@@ -31,75 +31,79 @@ These areas are **explicitly open** for community contribution.
 
 | Area | Location | Notes |
 |---|---|---|
-| New LangGraph nodes | `agent/nodes.py` | Must include unit test |
-| Graph edge conditions | `agent/graph.py` | Must not weaken the `risk_override` safety rule |
-| State schema extensions | `agent/state.py` | Backwards-compatible additions only |
+| New LangGraph nodes | `backend/agent/nodes.py` | Must include unit test |
+| Graph edge conditions | `backend/agent/graph.py` | Must not weaken the `risk_override` safety rule |
+| State schema extensions | `backend/agent/state.py` | Backwards-compatible additions only |
 
 ### Adapters (Integrations)
 
 | Area | Location | Notes |
 |---|---|---|
-| New ticketing adapters | `adapters/` (new file, e.g. `zendesk_adapter.py`) | Must extend `adapters/base.py` |
-| ServiceNow / Linear / GitHub Issues adapters | `adapters/` | See existing Jira adapter as reference |
-| Slack Block Kit improvements | `adapters/slack_adapter.py` | UI-only, no logic changes |
-| PagerDuty / OpsGenie escalation adapters | `adapters/` | New file; escalation path only |
+| New ticketing adapters | `backend/adapters/` (new file, e.g. `zendesk_adapter.py`) | Must extend `backend/adapters/base.py` |
+| ServiceNow / Linear / GitHub Issues adapters | `backend/adapters/` | See existing Jira adapter as reference |
+| Direct sync & search operations | `backend/adapters/jira_adapter.py` | Follow `search_tickets` pattern |
+| Slack Block Kit improvements | `backend/adapters/slack_adapter.py` | UI-only, no logic changes |
+| PagerDuty / OpsGenie escalation adapters | `backend/adapters/` | New file; escalation path only |
 
 ### Retrieval and Scoring
 
 | Area | Location | Notes |
 |---|---|---|
-| Alternative embedding models | `retrieval/` | Must benchmark against existing baseline |
-| Trust score formula tuning | `scoring/trust_scorer.py` | Must include benchmark comparison in PR |
-| ChromaDB to alternative vector store | `retrieval/` | Must be togglable via env var, not breaking |
+| Alternative embedding models | `backend/retrieval/` | Must benchmark against existing baseline |
+| Trust score formula tuning | `backend/scoring/trust_scorer.py` | Must include benchmark comparison in PR |
+| ChromaDB to alternative vector store | `backend/retrieval/` | Must be togglable via env var, not breaking |
 
 ### LLM / Model Support
 
 | Area | Location | Notes |
 |---|---|---|
-| New LLM provider wrappers | `llm/` | Must be togglable via `LLM_PROVIDER` env var |
-| Local model support (Ollama, LM Studio) | `llm/` | Offline-first; no API key required |
-| Prompt template improvements | `llm/` | Must not change classification output schema |
+| New LLM provider wrappers | `backend/llm/` | Must be togglable via `LLM_PROVIDER` env var |
+| Local model support (Ollama, LM Studio) | `backend/llm/` | Offline-first; no API key required |
+| Prompt template improvements | `backend/llm/` | Must not change classification output schema |
 
 ### API and MCP Server
 
 | Area | Location | Notes |
 |---|---|---|
-| New REST endpoints | `api/` | Follow existing FastAPI patterns |
-| MCP tool definitions | `mcp_server.py` | Additive only; no breaking changes to existing tools |
-| OpenAPI schema improvements | `api/` | Documentation only |
+| New REST endpoints | `backend/api/main.py` | Follow existing FastAPI patterns |
+| Ticket sync routes | `backend/api/main.py` | Ensure persistence to Supabase and SQLite |
+| MCP tool definitions | `backend/mcp_server.py` | Additive only; no breaking changes to existing tools |
+| OpenAPI schema improvements | `backend/api/` | Documentation only |
 
 ### Tests
 
 | Area | Location | Notes |
 |---|---|---|
-| New unit tests | `tests/` | Always welcome; target uncovered code paths |
-| Benchmark ground truth entries | `benchmark_ground_truth.csv` | Must include rationale in PR description |
-| Integration test improvements | `tests/` | Must run offline (no live API calls) |
+| New unit tests | `backend/tests/` | Always welcome; target uncovered code paths |
+| Benchmark ground truth entries | `backend/benchmark_ground_truth.csv` | Must include rationale in PR description |
+| Integration test improvements | `backend/tests/` | Must run offline (no live API calls) |
 
 ### Documentation
 
 | Area | Location | Notes |
 |---|---|---|
 | README improvements | `README.md`, `README_zh.md`, `README_ar.md` | Factual corrections, clarity, typos |
-| New worked examples | `examples/` | Follow the existing `.md` format |
-| Architecture diagrams | `story/` | Use Mermaid or clean SVG |
+| New worked examples | `backend/examples/` | Follow the existing `.md` format |
+| Architecture diagrams | Root directory (`.png`, `.svg`) | Mermaid or clean image assets |
 | Translation PRs | `README_*.md` | New language translations welcome |
 
-### Dashboard (Admin UI)
+### Frontend Console (React + Vite)
 
 | Area | Location | Notes |
 |---|---|---|
-| New dashboard pages | `dashboard/admin/src/pages/` | React + Vite; match existing design system |
-| Bug fixes in existing pages | `dashboard/admin/src/` | Always welcome |
-| Landing page improvements | `dashboard/admin/src/pages/LoginScreen.jsx` | Cosmetic and UX only |
+| New dashboard pages | `frontend/src/pages/` | React + Vite; match existing design system |
+| Bug fixes in existing pages | `frontend/src/pages/` | Guard against undefined/null ticket fields |
+| Real-time sync & drawer views | `frontend/src/pages/TicketsPage.jsx` | Match enterprise theme |
+| Landing page improvements | `frontend/src/pages/LoginScreen.jsx` | Cosmetic and UX only |
 
 ### DevOps and Tooling
 
 | Area | Location | Notes |
 |---|---|---|
-| Docker / docker-compose improvements | `Dockerfile`, `docker-compose.yml` | Must not break existing `docker compose up` |
-| CI pipeline enhancements | `.github/workflows/ci.yml` | Must not remove existing test steps |
-| Dependabot / security tooling | `.github/` | Always welcome |
+| Backend Docker container | `backend/Dockerfile` | Python FastAPI + MCP runtime |
+| Frontend Docker container | `frontend/Dockerfile`, `frontend/nginx.conf` | Multi-stage Node build + Nginx Alpine |
+| Multi-service local orchestration | `docker-compose.yml` | Backend on `:8000`, Frontend on `:3000` |
+| Render deployment specs | `render.yaml` | Separate Backend and Frontend web services |
 
 ---
 
@@ -135,27 +139,32 @@ This prevents wasted effort on contributions that will not be merged.
 
 ## 4. Local development setup
 
+The Arbiter MCP codebase is organized into decoupled services:
+- `backend/`: FastAPI agent API, LangGraph decision graph, ChromaDB vector store, MCP server.
+- `frontend/`: React + Vite enterprise operations dashboard.
+
 ```bash
 # 1. Fork then clone your fork
 git clone https://github.com/<your-username>/arbiter-mcp.git
 cd arbiter-mcp
 
-# 2. Create and activate a virtual environment
+# 2. Setup the Python Backend
+cd backend
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-
-# 3. Install all dependencies
 pip install -r requirements.txt
+cp ../.env.example .env            # Configure your environment keys
 
-# 4. Copy environment template and fill in your keys
-cp .env.example .env
-# Edit .env with your credentials
-
-# 5. Run the full test suite (all 51 tests should pass)
+# 3. Run the full test suite (all 51 tests must pass)
 python -m pytest tests/ -v
 
-# 6. Run the API server locally
+# 4. Start the Backend API server (runs on http://localhost:8000)
 uvicorn api.main:app --reload --port 8000
+
+# 5. In a second terminal, start the Frontend Dashboard (runs on http://localhost:5173)
+cd ../frontend
+npm install
+npm run dev
 ```
 
 > **Tip:** All 51 tests run **fully offline** — no live Jira, Slack, or LLM API calls in the test suite.
@@ -355,19 +364,20 @@ Feature requests follow: `needs-discussion` → `approved` → `in progress`.
 - Docstrings on all public classes and methods (Google style)
 
 ```bash
+cd backend
 pip install ruff
 ruff check .
 ruff format .
 ```
 
-**JavaScript/JSX (dashboard)**
-- ESLint with the existing project config
-- No inline styles on new components — use the existing design system tokens
-- No emojis in UI strings (use SVG icons or colored dot indicators)
+**JavaScript/JSX (frontend)**
+- Vite + React with clean modular components
+- Reusable UI styling matching the operations design system
+- No hardcoded secrets or credentials in client bundles
 
 ```bash
-cd dashboard/admin
-npm run lint
+cd frontend
+npm run build
 ```
 
 **General**
@@ -379,21 +389,24 @@ npm run lint
 
 ## 12. Tests
 
-The test suite lives in `tests/`. All tests must run **fully offline**.
+The test suite lives in `backend/tests/`. All tests must run **fully offline**.
 
 ```bash
+# From repository root
+cd backend
+
 # Run all tests
 python -m pytest tests/ -v
 
 # Run with coverage
 python -m pytest tests/ -v --cov=. --cov-report=term-missing
 
-# Run a specific file
+# Run a specific test file
 python -m pytest tests/test_trust_scorer.py -v
 ```
 
 **Rules:**
-- Every new function in `agent/`, `adapters/`, `scoring/`, `retrieval/`, `llm/` must have at least one test
+- Every new function in `backend/agent/`, `backend/adapters/`, `backend/scoring/`, `backend/retrieval/`, `backend/llm/` must have at least one test
 - Mock all external API calls (Jira, Slack, LLM endpoints)
 - Tests must be deterministic — no flakiness tolerated
 - Do not modify `benchmark_ground_truth.csv` without including a rationale and updated `benchmark_results.json`
